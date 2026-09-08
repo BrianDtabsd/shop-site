@@ -6,7 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 /** Caserunr-style accent circle + rings (theme accent). */
 function HeroCircleVisual() {
   return (
-    <div className="hero-visual hero-visual--circle" aria-hidden="true">
+    <div className="hero-visual hero-visual--circle anim-parallax" aria-hidden="true">
       <div className="hero-visual__ring hero-visual__ring--outer" />
       <div className="hero-visual__ring hero-visual__ring--inner" />
       <div className="hero-visual__blob" />
@@ -21,7 +21,7 @@ function HeroCircleVisual() {
 /** Color Consciousness–style diagonal pastel stripes. */
 function HeroStripeVisual() {
   return (
-    <div className="hero-visual hero-visual--stripes" aria-hidden="true">
+    <div className="hero-visual hero-visual--stripes anim-parallax" aria-hidden="true">
       <div className="hero-visual__stripe hero-visual__stripe--a" />
       <div className="hero-visual__stripe hero-visual__stripe--b" />
       <div className="hero-visual__stripe hero-visual__stripe--c" />
@@ -49,7 +49,7 @@ export default function Hero() {
         )
       ) : (
         /* Subtle glass orb so the hero isn’t empty in Glass mode either */
-        <div className="hero-visual hero-visual--glass-orb" aria-hidden="true" />
+        <div className="hero-visual hero-visual--glass-orb anim-parallax" aria-hidden="true" />
       )}
 
       <div className="z-10 max-w-7xl mr-auto ml-auto pt-10 pb-28 lg:pt-16 lg:pb-32 relative">

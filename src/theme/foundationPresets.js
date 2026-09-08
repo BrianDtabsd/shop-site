@@ -229,3 +229,41 @@ export const foundationPresets = {
 };
 
 export const foundationPresetList = Object.values(foundationPresets);
+
+/**
+ * Glass-specific defaults layered on top of the shared foundation preset.
+ * When a user picks a Glass preset, these values are applied alongside
+ * the foundation color/font pair.
+ */
+export const glassPresetDefaults = {
+  ember: {
+    panelStrength: 0.52,
+    navOutline: 'thin',
+    backgroundUrl: '',
+    label: 'Warm Glass',
+  },
+  consciousness: {
+    panelStrength: 0.42,
+    navOutline: 'none',
+    backgroundUrl: '',
+    label: 'Muted Glass',
+  },
+  sansFirst: {
+    panelStrength: 0.48,
+    navOutline: 'thin',
+    backgroundUrl: '',
+    label: 'Clean Glass',
+  },
+  inkPaper: {
+    panelStrength: 0.50,
+    navOutline: 'thick',
+    backgroundUrl: '',
+    label: 'Cool Glass',
+  },
+  monochrome: {
+    panelStrength: 0.58,
+    navOutline: 'thin',
+    backgroundUrl: '',
+    label: 'Charcoal Glass',
+  },
+};

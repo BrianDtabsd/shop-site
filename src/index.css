@@ -35,6 +35,12 @@
   /* Page field behind glass — occlusion mask uses this, not frost tint */
   --page-canvas: #0a0a0b;
 
+  /* Motion defaults */
+  --float-strength: 0.5;
+  --parallax-depth: 0.4;
+  --reveal-line-speed: 0.8s;
+  --reveal-fade-speed: 1.2s;
+
   --ds-color-canvas: #0a0a0b;
   --ds-color-surface: #161618;
   --ds-color-surface-subtle: #1e1e20;
@@ -256,15 +262,32 @@ html[data-serif-scope='none'] .font-display {
     transform: translateY(110%);
     opacity: 0;
     transition:
-      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
-      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      transform var(--reveal-line-speed) cubic-bezier(0.16, 1, 0.3, 1),
+      opacity var(--reveal-line-speed) cubic-bezier(0.16, 1, 0.3, 1);
   }
   .anim-fade-up {
     transform: translateY(60px) scale(0.96);
     opacity: 0;
     transition:
-      transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
-      opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transform var(--reveal-fade-speed) cubic-bezier(0.16, 1, 0.3, 1),
+      opacity var(--reveal-fade-speed) cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Float effect — cards lift on hover when float strength > 0 */
+  .anim-float-card {
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .anim-float-card:hover {
+    transform: translateY(calc(-6px * var(--float-strength)));
+    box-shadow: 0 calc(16px * var(--float-strength)) calc(48px * var(--float-strength))
+      rgba(0, 0, 0, calc(0.25 * var(--float-strength)));
+  }
+
+  /* Parallax scroll layer — driven by JS setting --parallax-y */
+  .anim-parallax {
+    will-change: transform;
+    transform: translateY(var(--parallax-y, 0px));
   }
 
   .is-visible .anim-line,
@@ -387,6 +410,43 @@ html[data-surface='glass'][data-foundation-mode='light'] body::before {
 .glass-nav--floating {
   border-radius: 1rem;
   width: 100%;
+}
+
+/* Floating nav: absolute inside hero, transparent until scroll */
+html[data-nav-style='floating'] .site-header-slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: transparent;
+}
+
+html[data-nav-style='floating'] .site-header-slot.is-scrolled {
+  position: sticky;
+  background: linear-gradient(
+    180deg,
+    var(--page-canvas) 0%,
+    var(--page-canvas) 78%,
+    color-mix(in srgb, var(--page-canvas) 85%, transparent) 90%,
+    transparent 100%
+  );
+}
+
+html[data-nav-style='floating'] .site-header-slot .glass-nav {
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  transition: background-color 0.35s ease, backdrop-filter 0.35s ease, box-shadow 0.35s ease;
+}
+
+html[data-nav-style='floating'] .site-header-slot.is-scrolled .glass-nav {
+  background-color: rgba(var(--frost-rgb), 0.92);
+  backdrop-filter: blur(var(--frost-level)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--frost-level)) saturate(1.2);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
 }
 
 /* ─────────────────────────────────────────────────────────────

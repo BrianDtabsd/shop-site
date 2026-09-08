@@ -19,6 +19,7 @@ function Header() {
   const location = useLocation();
   const { theme } = useTheme();
   const isFoundation = theme.surfaceSystem === 'foundation';
+  const isFloating = !isFoundation && theme.navStyle === 'floating';
 
   useEffect(() => {
     const scrollElement = scrollElementRef.current;
@@ -73,7 +74,7 @@ function Header() {
       <div className="relative z-10 w-full">
         <div
           className={`
-            glass-nav glass-nav--docked flex items-center justify-between gap-3
+            glass-nav ${isFloating ? 'glass-nav--floating' : 'glass-nav--docked'} flex items-center justify-between gap-3
             ${isFoundation ? 'px-0 sm:px-1 py-4' : 'px-4 sm:px-5 py-3'}
             w-full
           `}

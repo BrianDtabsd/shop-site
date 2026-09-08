@@ -23,7 +23,7 @@ export default function Card({
   if (imagePosition === 'right') flexDirection = 'flex-col md:flex-row-reverse';
 
   const content = (
-    <div className={`glass-card flex ${flexDirection} gap-6 h-full overflow-hidden ${className}`}>
+    <div className={`glass-card anim-float-card flex ${flexDirection} gap-6 h-full overflow-hidden ${className}`}>
       {/* Foreground Image */}
       {imageSrc && imagePosition !== 'background' && imagePosition !== 'none' && (
         <div className={`${(imagePosition === 'left' || imagePosition === 'right') ? 'w-full md:w-1/3' : 'w-full h-48'} shrink-0 relative`}>

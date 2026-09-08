@@ -10,8 +10,10 @@ export default function LookEditor() {
     theme,
     updateTheme,
     applyLookPreset,
+    applyGlassPreset,
     resetTheme,
     foundationPresetList,
+    glassPresetDefaults,
   } = useTheme();
   const isFoundation = theme.surfaceSystem === 'foundation';
   const mode = theme.foundationMode === 'light' ? 'light' : 'dark';
@@ -359,6 +361,170 @@ export default function LookEditor() {
           </div>
         </>
       ) : null}
+
+      {/* ── Glass Presets (Phase 5) ── */}
+      {!isFoundation && glassPresetDefaults ? (
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            Glass Presets
+          </label>
+          <p className="mb-2 text-[10px] text-slate-500 leading-relaxed">
+            Same fonts &amp; accents as above — applies tuned panel strength + nav outline for Glass.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {foundationPresetList.map((preset) => {
+              const gd = glassPresetDefaults[preset.id];
+              if (!gd) return null;
+              const active =
+                theme.foundationPreset === preset.id &&
+                theme.panelStrength === gd.panelStrength;
+              const preview = preset[mode];
+              return (
+                <button
+                  key={`glass-${preset.id}`}
+                  type="button"
+                  onClick={() => applyGlassPreset(preset.id)}
+                  className={`text-left rounded-lg border px-2.5 py-2 transition-colors ${
+                    active
+                      ? 'border-blue-400/60 bg-blue-500/15'
+                      : 'border-white/10 bg-slate-900/40 hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px] font-semibold text-white block truncate">
+                    {gd.label}
+                  </span>
+                  <div className="mt-1.5 flex gap-1">
+                    {[preview.canvas, preview.accent].map((hex) => (
+                      <span
+                        key={`gp-${preset.id}-${hex}`}
+                        className="h-3 w-3 rounded-full border border-white/20"
+                        style={{ backgroundColor: hex }}
+                      />
+                    ))}
+                    <span className="ml-auto text-[9px] text-slate-500">
+                      {Math.round(gd.panelStrength * 100)}%
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Motion Controls (Phase 4) ── */}
+      <div>
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+          Motion
+        </label>
+
+        {!isFoundation ? (
+          <div className="mb-3">
+            <span className="block text-[11px] text-slate-400 mb-1">Nav Style</span>
+            <div className="flex bg-slate-800 rounded-lg p-1">
+              <button
+                type="button"
+                className={`flex-1 py-1.5 px-3 rounded-md transition-colors ${
+                  theme.navStyle === 'docked' ? 'bg-blue-500 text-white' : 'hover:bg-slate-700'
+                }`}
+                onClick={() => updateTheme({ navStyle: 'docked' })}
+              >
+                Docked
+              </button>
+              <button
+                type="button"
+                className={`flex-1 py-1.5 px-3 rounded-md transition-colors ${
+                  theme.navStyle === 'floating' ? 'bg-blue-500 text-white' : 'hover:bg-slate-700'
+                }`}
+                onClick={() => updateTheme({ navStyle: 'floating' })}
+              >
+                Floating
+              </button>
+            </div>
+            <p className="mt-1 text-[10px] text-slate-500">
+              Floating: nav is transparent over the hero, fills in on scroll.
+            </p>
+          </div>
+        ) : null}
+
+        <div className="mb-3">
+          <div className="flex justify-between mb-1 text-[11px]">
+            <span className="text-slate-400">Float lift</span>
+            <span className="text-slate-300">
+              {Math.round((theme.floatStrength ?? 0.5) * 100)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={theme.floatStrength ?? 0.5}
+            onChange={(e) =>
+              updateTheme({ floatStrength: parseFloat(e.target.value) })
+            }
+            className="w-full accent-blue-500"
+          />
+          <p className="mt-0.5 text-[10px] text-slate-500">
+            How much cards lift on hover.
+          </p>
+        </div>
+
+        <div className="mb-3">
+          <div className="flex justify-between mb-1 text-[11px]">
+            <span className="text-slate-400">Parallax depth</span>
+            <span className="text-slate-300">
+              {Math.round((theme.parallaxDepth ?? 0.4) * 100)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={theme.parallaxDepth ?? 0.4}
+            onChange={(e) =>
+              updateTheme({ parallaxDepth: parseFloat(e.target.value) })
+            }
+            className="w-full accent-blue-500"
+          />
+          <p className="mt-0.5 text-[10px] text-slate-500">
+            Scroll-driven depth shift on hero visuals.
+          </p>
+        </div>
+
+        <div className="mb-3">
+          <span className="block text-[11px] text-slate-400 mb-1">Reveal speed</span>
+          <div className="flex bg-slate-800 rounded-lg p-1">
+            {['fast', 'medium', 'slow'].map((speed) => (
+              <button
+                key={speed}
+                type="button"
+                className={`flex-1 py-1.5 px-2 rounded-md transition-colors capitalize ${
+                  theme.revealSpeed === speed
+                    ? 'bg-blue-500 text-white'
+                    : 'hover:bg-slate-700'
+                }`}
+                onClick={() => updateTheme({ revealSpeed: speed })}
+              >
+                {speed}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={theme.respectReducedMotion !== false}
+            onChange={(e) =>
+              updateTheme({ respectReducedMotion: e.target.checked })
+            }
+            className="rounded bg-slate-800 border-slate-700 text-blue-500 focus:ring-blue-500"
+          />
+          <span className="text-[11px]">Respect reduced-motion preference</span>
+        </label>
+      </div>
 
       <button
         type="button"

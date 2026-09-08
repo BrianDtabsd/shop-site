@@ -43,7 +43,29 @@ Worker secrets: copy `worker/.dev.vars.example` to `worker/.dev.vars`.
 
 ### Studio mode
 
-The blue gear button (bottom-right) opens Theme Settings when studio mode is on (default). Runtime override: `?studio=on|off` (persisted in `localStorage`).
+Studio mode is on by default. The "Open Studio" button mounts `SettingsPanel` *beside* the site
+rather than over it: `StudioSplitShell` in `App.jsx` splits the viewport into a scrolling site
+pane and a resizable panel (a drag-to-expand bottom sheet on mobile). The panel has five tabs —
+Setup, Brand, Pages, Copy, Look.
+
+Runtime override: `?studio=on|off` (persisted in `localStorage`). Build-time:
+`VITE_SHOPSITE_STUDIO_MODE=off`.
+
+**Gotcha:** the site pane scrolls, not the window. Anything scroll-linked must read the element
+from `ScrollContainerContext` (as `useScrollReveal` does) instead of listening on `window`.
+
+### Theme presets
+
+Looks are data, not separate builds. `src/theme/foundationPresets.js` holds five presets
+(`ember`, `consciousness`, `sansFirst`, `inkPaper`, `monochrome`), each with fonts and full
+light/dark palettes. `useTheme` resolves `surfaceSystem` (`glass` | `foundation`) +
+`foundationPreset` + `foundationMode` into `--ds-*` CSS custom properties on `:root`.
+
+Add a new look by adding a preset entry (and its `glassPresetDefaults` row) — it appears in the
+Look tab automatically. Never fork the project to try a new look. Style components with the
+`--ds-color-*` tokens rather than hardcoded colors, or they will break across presets and modes.
+
+All studio edits persist to `localStorage` only; there is no config export yet.
 
 ### Routing
 

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import {
   foundationPresets,
   foundationPresetList,
+  glassPresetDefaults,
 } from '../theme/foundationPresets';
 
 const THEME_STORAGE_KEY = 'shopsite-theme-v4';
@@ -78,6 +79,13 @@ const defaultTheme = {
   buttonStyle: 'filled',
   buttonGlow: false,
   buttonJump: true,
+
+  // Phase 4 — Motion controls
+  navStyle: 'docked', // 'docked' | 'floating' (Glass only)
+  floatStrength: 0.5, // 0–1: hover-lift intensity on cards
+  parallaxDepth: 0.4, // 0–1: scroll-driven parallax intensity
+  revealSpeed: 'medium', // 'fast' | 'medium' | 'slow'
+  respectReducedMotion: true,
 };
 
 function loadTheme() {
@@ -193,6 +201,19 @@ function applyGlassTheme(root, theme) {
     '--hero-stripe-c',
     colors.pastelSage || colors.accentHover || accent
   );
+
+  applyMotionVars(root, theme);
+}
+
+const revealSpeedMap = { fast: '0.55s', medium: '0.8s', slow: '1.3s' };
+const revealFadeMap = { fast: '0.8s', medium: '1.2s', slow: '1.8s' };
+
+function applyMotionVars(root, theme) {
+  root.style.setProperty('--float-strength', String(theme.floatStrength ?? 0.5));
+  root.style.setProperty('--parallax-depth', String(theme.parallaxDepth ?? 0.4));
+  root.style.setProperty('--reveal-line-speed', revealSpeedMap[theme.revealSpeed] || '0.8s');
+  root.style.setProperty('--reveal-fade-speed', revealFadeMap[theme.revealSpeed] || '1.2s');
+  root.dataset.navStyle = theme.navStyle || 'docked';
 }
 
 function applyFoundationTheme(root, theme) {
@@ -252,6 +273,8 @@ function applyFoundationTheme(root, theme) {
     '--hero-stripe-c',
     colors.pastelSage || colors.accentHover || colors.accent
   );
+
+  applyMotionVars(root, theme);
 }
 
 const ThemeContext = createContext();
@@ -304,6 +327,24 @@ export function ThemeProvider({ children }) {
     });
   }, []);
 
+  const applyGlassPreset = useCallback((presetId) => {
+    setTheme((prev) => {
+      const preset = foundationPresets[presetId] || foundationPresets.ember;
+      const glass = glassPresetDefaults[presetId] || glassPresetDefaults.ember;
+      const mode = prev.foundationMode === 'light' ? 'light' : 'dark';
+      const colors = preset[mode];
+      return {
+        ...prev,
+        foundationPreset: preset.id,
+        primaryColor: colors.accent,
+        pageColor: colors.canvas,
+        panelStrength: glass.panelStrength,
+        navOutline: glass.navOutline,
+        backgroundUrl: glass.backgroundUrl,
+      };
+    });
+  }, []);
+
   const resetTheme = useCallback(() => {
     setTheme({ ...defaultTheme });
     try {
@@ -319,10 +360,12 @@ export function ThemeProvider({ children }) {
         theme,
         updateTheme,
         applyLookPreset,
+        applyGlassPreset,
         resetTheme,
         typographyBundles,
         foundationPresets,
         foundationPresetList,
+        glassPresetDefaults,
         defaultTheme,
       }}
     >
