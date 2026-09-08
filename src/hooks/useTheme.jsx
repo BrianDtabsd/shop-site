@@ -1,377 +1,290 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   foundationPresets,
   foundationPresetList,
   glassPresetDefaults,
 } from '../theme/foundationPresets';
+import { CONTROLS_BY_ID } from '../theme/controls';
+import {
+  DEFAULT_LOOK,
+  legacyThemeView,
+  normalizeLook,
+  presetValues,
+  resolveLook,
+} from '../theme/resolveLook';
+import { loadLookFromStorage } from '../theme/migrateLook';
 
-const THEME_STORAGE_KEY = 'shopsite-theme-v4';
+/**
+ * Theme provider over the layered look config.
+ *
+ * State is `{ presetId, surface, mode, overrides }` — see theme/resolveLook.js.
+ * All derivation lives in that pure module; this hook only holds state, persists
+ * it, and writes the resolved tokens to the document.
+ *
+ * `theme` is exposed as a flat COMPATIBILITY VIEW so existing consumers
+ * (Button, Header, Hero, Layout) keep reading `theme.buttonShape`,
+ * `theme.layoutMode`, and friends unchanged. New code should prefer `values`
+ * and `look`.
+ */
 
-function hexToRgb(hex) {
-  if (!hex || typeof hex !== 'string') return '22, 22, 24';
-  const raw = hex.replace('#', '').trim();
-  const full =
-    raw.length === 3
-      ? raw
-          .split('')
-          .map((c) => c + c)
-          .join('')
-      : raw;
-  if (!/^[0-9a-fA-F]{6}$/.test(full)) return '22, 22, 24';
-  const n = parseInt(full, 16);
-  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
-}
+const LOOK_STORAGE_KEY = 'shopsite-look-v5';
+const LEGACY_THEME_KEYS = [
+  'shopsite-theme-v4',
+  'shopsite-theme-v3',
+  'shopsite-theme-v2',
+];
+const SAVED_LOOKS_KEY = 'shopsite-saved-looks-v1';
 
-/** Legacy typography bundles — kept for old saves; Glass now uses Foundation presets. */
-const typographyBundles = {
-  modern: {
-    name: 'Jakarta Clean',
-    headingFont: '"Plus Jakarta Sans", sans-serif',
-    bodyFont: '"Plus Jakarta Sans", sans-serif',
-    headingColor: '#ffffff',
-    subtitleColor: '#a1a1aa',
-    bodyColor: '#d4d4d8',
-  },
-  elegant: {
-    name: 'Montserrat Display',
-    headingFont: '"Montserrat", sans-serif',
-    bodyFont: '"Plus Jakarta Sans", sans-serif',
-    headingColor: '#fafafa',
-    subtitleColor: '#a1a1aa',
-    bodyColor: '#e4e4e7',
-  },
-  tech: {
-    name: 'Ember Technical',
-    headingFont: '"Montserrat", sans-serif',
-    bodyFont: '"Plus Jakarta Sans", sans-serif',
-    headingColor: '#ffffff',
-    subtitleColor: '#a8a29e',
-    bodyColor: '#f5f5f4',
-  },
+/** Old flat field name → control id, for `updateTheme` backwards compatibility. */
+const LEGACY_FIELD_ALIASES = {
+  primaryColor: 'accent',
+  surfaceSystem: '__surface',
+  foundationPreset: '__preset',
+  foundationMode: '__mode',
 };
 
-const defaultTheme = {
-  surfaceSystem: 'glass', // 'glass' | 'foundation'
-  foundationMode: 'dark', // shared light/dark for Glass + Foundation presets
-  foundationPreset: 'ember', // shared theme grid (Glass + Foundation)
-
-  backgroundUrl: '',
-  backgroundPattern: 'none',
-  layoutMode: 'cards',
-
-  /** Page field color — empty means use the active preset canvas */
-  pageColor: '',
-  /** 0–1: glass panel weight (blur + opacity together) */
-  panelStrength: 0.48,
-  primaryColor: '#e27348',
-
-  // Kept for older saves / button chrome; not primary Glass Look controls
-  frostLevel: '20px',
-  transparencyLevel: 0.55,
-  frostColor: '25, 25, 27',
-  typographyPreset: 'modern',
-  bodyTextSize: '16px',
-  cardPadding: '1.5rem',
-  cardRadius: '1.25rem',
-  navOutline: 'thin',
-  navOutlineColor: 'rgba(255,255,255,0.08)',
-  buttonShape: 'rounded',
-  buttonStyle: 'filled',
-  buttonGlow: false,
-  buttonJump: true,
-
-  // Phase 4 — Motion controls
-  navStyle: 'docked', // 'docked' | 'floating' (Glass only)
-  floatStrength: 0.5, // 0–1: hover-lift intensity on cards
-  parallaxDepth: 0.4, // 0–1: scroll-driven parallax intensity
-  revealSpeed: 'medium', // 'fast' | 'medium' | 'slow'
-  respectReducedMotion: true,
-};
-
-function loadTheme() {
+function readSavedLooks() {
   try {
-    const raw =
-      localStorage.getItem(THEME_STORAGE_KEY) ||
-      localStorage.getItem('shopsite-theme-v3') ||
-      localStorage.getItem('shopsite-theme-v2');
-    if (!raw) return { ...defaultTheme };
+    const raw = localStorage.getItem(SAVED_LOOKS_KEY);
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return { ...defaultTheme };
-    const merged = { ...defaultTheme, ...parsed };
-    // Migrate old frost sliders → panelStrength once
-    if (parsed.panelStrength == null && parsed.transparencyLevel != null) {
-      merged.panelStrength = Math.min(
-        1,
-        Math.max(0.15, Number(parsed.transparencyLevel) || 0.48)
-      );
-    }
-    return merged;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((entry) => entry && typeof entry === 'object' && entry.id && entry.name)
+      .map((entry) => ({ ...normalizeLook(entry), id: entry.id, name: entry.name }));
   } catch {
-    return { ...defaultTheme };
+    return [];
   }
 }
 
-function resolvePreset(theme) {
-  return foundationPresets[theme.foundationPreset] || foundationPresets.ember;
+function slugify(name) {
+  return (
+    String(name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'look'
+  );
 }
 
-function resolveMode(theme) {
-  return theme.foundationMode === 'light' ? 'light' : 'dark';
-}
-
-function applyGlassTheme(root, theme) {
-  const preset = resolvePreset(theme);
-  const mode = resolveMode(theme);
-  const colors = preset[mode];
-  const page = (theme.pageColor || '').trim() || colors.canvas;
-  const accent = theme.primaryColor || colors.accent;
-  const panelStrength = Number(theme.panelStrength);
-  const strength = Math.min(
-    1,
-    Math.max(0, Number.isFinite(panelStrength) ? panelStrength : 0.48)
-  );
-  // Cards can go fully clear (0) so type floats with no panel behind it.
-  const panelOpacity = strength;
-  const blurPx = strength <= 0.02 ? '0px' : `${Math.round(8 + strength * 36)}px`;
-  // Nav stays readable even when cards are cleared.
-  const navOpacity = Math.min(0.92, Math.max(0.55, 0.4 + strength * 0.45));
-  const panelRgb = hexToRgb(colors.surface);
-  const isCards = theme.layoutMode === 'cards';
-
-  const bg = (theme.backgroundUrl || '').trim();
-  root.style.setProperty('--bg-url', bg ? `url('${bg}')` : 'none');
-
-  root.style.setProperty('--font-display', preset.fonts.display);
-  root.style.setProperty('--font-heading', preset.fonts.heading);
-  root.style.setProperty('--font-body', preset.fonts.body);
-  root.style.setProperty('--font-label', preset.fonts.label);
-  root.style.setProperty('--color-heading', colors.ink);
-  root.style.setProperty('--color-subtitle', colors.inkMuted);
-  root.style.setProperty('--color-body', colors.ink);
-  root.style.setProperty('--text-body-size', theme.bodyTextSize || '16px');
-
-  root.style.setProperty('--page-canvas', page);
-  root.style.setProperty('--primary-color', accent);
-  root.style.setProperty('--frost-rgb', panelRgb);
-  root.style.setProperty('--frost-level', blurPx === '0px' ? '16px' : blurPx);
-  root.style.setProperty('--transparency-level', String(panelOpacity));
-  root.style.setProperty('--nav-surface', `rgba(${panelRgb}, ${navOpacity})`);
-
-  root.style.setProperty('--card-padding', theme.cardPadding);
-  root.style.setProperty('--card-radius', theme.cardRadius);
-  root.style.setProperty('--card-opacity', isCards ? String(panelOpacity) : '0');
-  root.style.setProperty(
-    '--card-border-opacity',
-    isCards ? String(panelOpacity * 0.18) : '0'
-  );
-  root.style.setProperty('--card-frost', isCards ? blurPx : '0px');
-  root.style.setProperty(
-    '--container-opacity',
-    !isCards ? String(Math.min(0.88, Math.max(0, panelOpacity))) : '0'
-  );
-  root.style.setProperty('--container-frost', !isCards ? blurPx : '0px');
-  root.style.setProperty('--container-border-opacity', '0');
-
-  const navBorderWidth =
-    theme.navOutline === 'none' ? '0px' : theme.navOutline === 'thin' ? '1px' : '2px';
-  root.style.setProperty('--nav-border-width', navBorderWidth);
-  root.style.setProperty(
-    '--nav-border-color',
-    theme.navOutlineColor || colors.line
-  );
-
-  root.style.setProperty('--ds-color-canvas', page);
-  root.style.setProperty('--ds-color-surface', colors.surface);
-  root.style.setProperty('--ds-color-surface-subtle', colors.surfaceSubtle);
-  root.style.setProperty('--ds-color-ink', colors.ink);
-  root.style.setProperty('--ds-color-ink-muted', colors.inkMuted);
-  root.style.setProperty('--ds-color-ink-faint', colors.inkFaint);
-  root.style.setProperty('--ds-color-line', colors.line);
-  root.style.setProperty('--ds-color-accent', accent);
-  root.style.setProperty('--ds-color-accent-hover', colors.accentHover);
-  root.style.setProperty('--ds-color-accent-soft', colors.accentSoft);
-  root.style.setProperty('--ds-button-ink', accent);
-  root.style.setProperty('--ds-button-ink-text', '#ffffff');
-  root.style.setProperty(
-    '--hero-stripe-a',
-    colors.pastelLavender || colors.accentSoft || accent
-  );
-  root.style.setProperty('--hero-stripe-b', colors.pastelTeal || accent);
-  root.style.setProperty(
-    '--hero-stripe-c',
-    colors.pastelSage || colors.accentHover || accent
-  );
-
-  applyMotionVars(root, theme);
-}
-
-const revealSpeedMap = { fast: '0.55s', medium: '0.8s', slow: '1.3s' };
-const revealFadeMap = { fast: '0.8s', medium: '1.2s', slow: '1.8s' };
-
-function applyMotionVars(root, theme) {
-  root.style.setProperty('--float-strength', String(theme.floatStrength ?? 0.5));
-  root.style.setProperty('--parallax-depth', String(theme.parallaxDepth ?? 0.4));
-  root.style.setProperty('--reveal-line-speed', revealSpeedMap[theme.revealSpeed] || '0.8s');
-  root.style.setProperty('--reveal-fade-speed', revealFadeMap[theme.revealSpeed] || '1.2s');
-  root.dataset.navStyle = theme.navStyle || 'docked';
-}
-
-function applyFoundationTheme(root, theme) {
-  const preset = resolvePreset(theme);
-  const mode = resolveMode(theme);
-  const colors = preset[mode];
-
-  root.style.setProperty('--bg-url', 'none');
-  root.style.setProperty('--font-display', preset.fonts.display);
-  root.style.setProperty('--font-heading', preset.fonts.heading);
-  root.style.setProperty('--font-body', preset.fonts.body);
-  root.style.setProperty('--font-label', preset.fonts.label);
-  root.style.setProperty('--color-heading', colors.ink);
-  root.style.setProperty('--color-subtitle', colors.inkMuted);
-  root.style.setProperty('--color-body', colors.ink);
-  root.style.setProperty('--text-body-size', '16px');
-
-  root.style.setProperty('--primary-color', colors.accent);
-  root.style.setProperty('--ds-color-canvas', colors.canvas);
-  root.style.setProperty('--page-canvas', colors.canvas);
-  root.style.setProperty('--ds-color-surface', colors.surface);
-  root.style.setProperty('--ds-color-surface-subtle', colors.surfaceSubtle);
-  root.style.setProperty('--ds-color-ink', colors.ink);
-  root.style.setProperty('--ds-color-ink-muted', colors.inkMuted);
-  root.style.setProperty('--ds-color-ink-faint', colors.inkFaint);
-  root.style.setProperty('--ds-color-line', colors.line);
-  root.style.setProperty('--ds-color-accent', colors.accent);
-  root.style.setProperty('--ds-color-accent-hover', colors.accentHover);
-  root.style.setProperty('--ds-color-accent-soft', colors.accentSoft);
-  root.style.setProperty('--ds-button-ink', colors.buttonInk);
-  root.style.setProperty('--ds-button-ink-text', colors.buttonInkText);
-
-  root.style.setProperty('--frost-level', '0px');
-  root.style.setProperty('--transparency-level', '1');
-  root.style.setProperty('--frost-rgb', '255, 255, 255');
-  root.style.setProperty('--card-opacity', '1');
-  root.style.setProperty('--card-border-opacity', '1');
-  root.style.setProperty('--card-frost', '0px');
-  root.style.setProperty('--card-padding', '1.5rem');
-  root.style.setProperty('--card-radius', '0.5rem');
-  root.style.setProperty('--container-opacity', '1');
-  root.style.setProperty('--container-frost', '0px');
-  root.style.setProperty('--container-border-opacity', '0');
-  root.style.setProperty('--nav-surface', colors.canvas);
-  root.style.setProperty('--nav-border-width', '1px');
-  root.style.setProperty('--nav-border-color', colors.line);
-
-  root.style.setProperty(
-    '--hero-stripe-a',
-    colors.pastelLavender || colors.accentSoft || colors.accent
-  );
-  root.style.setProperty(
-    '--hero-stripe-b',
-    colors.pastelTeal || colors.accent
-  );
-  root.style.setProperty(
-    '--hero-stripe-c',
-    colors.pastelSage || colors.accentHover || colors.accent
-  );
-
-  applyMotionVars(root, theme);
-}
-
-const ThemeContext = createContext();
+const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(loadTheme);
+  const [look, setLook] = useState(() => {
+    if (typeof window === 'undefined') return { ...DEFAULT_LOOK, overrides: {} };
+    return loadLookFromStorage(localStorage, LOOK_STORAGE_KEY, LEGACY_THEME_KEYS).look;
+  });
+  const [savedLooks, setSavedLooks] = useState(readSavedLooks);
+
+  const resolved = useMemo(() => resolveLook(look), [look]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
+      localStorage.setItem(LOOK_STORAGE_KEY, JSON.stringify(look));
     } catch (e) {
-      console.warn('Theme: could not persist to localStorage', e);
+      console.warn('Theme: could not persist look', e);
     }
-  }, [theme]);
+  }, [look]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(SAVED_LOOKS_KEY, JSON.stringify(savedLooks));
+    } catch (e) {
+      console.warn('Theme: could not persist saved looks', e);
+    }
+  }, [savedLooks]);
+
+  // Write resolved tokens + data attributes to the document.
   useEffect(() => {
     const root = document.documentElement;
-    const isFoundation = theme.surfaceSystem === 'foundation';
-    const preset = resolvePreset(theme);
-
-    if (isFoundation) {
-      applyFoundationTheme(root, theme);
-    } else {
-      applyGlassTheme(root, theme);
+    for (const [name, value] of Object.entries(resolved.tokens)) {
+      root.style.setProperty(name, value);
     }
+    for (const [name, value] of Object.entries(resolved.dataset)) {
+      root.dataset[name] = value;
+    }
+    document.body.dataset.layoutMode = resolved.values.layoutMode;
+    document.body.dataset.surface = resolved.meta.surface;
+  }, [resolved]);
 
-    root.dataset.surface = isFoundation ? 'foundation' : 'glass';
-    root.dataset.foundationMode = resolveMode(theme);
-    root.dataset.foundationPreset = preset.id;
-    root.dataset.serifScope = preset.serifScope;
-    document.body.dataset.layoutMode = theme.layoutMode;
-    document.body.dataset.surface = root.dataset.surface;
-  }, [theme]);
+  // ── Mutations ──────────────────────────────────────────────────────────────
 
-  const updateTheme = useCallback((updates) => {
-    setTheme((prev) => ({ ...prev, ...updates }));
+  const setOverride = useCallback((id, value) => {
+    if (!CONTROLS_BY_ID[id]) return;
+    setLook((prev) => ({ ...prev, overrides: { ...prev.overrides, [id]: value } }));
   }, []);
 
-  const applyLookPreset = useCallback((presetId) => {
-    setTheme((prev) => {
-      const preset = foundationPresets[presetId] || foundationPresets.ember;
-      const mode = prev.foundationMode === 'light' ? 'light' : 'dark';
-      const colors = preset[mode];
-      return {
-        ...prev,
-        foundationPreset: preset.id,
-        primaryColor: colors.accent,
-        pageColor: colors.canvas,
-      };
+  /** Clear one control so it tracks the preset again. */
+  const resetControl = useCallback((id) => {
+    setLook((prev) => {
+      if (!(id in prev.overrides)) return prev;
+      const next = { ...prev.overrides };
+      delete next[id];
+      return { ...prev, overrides: next };
     });
   }, []);
 
-  const applyGlassPreset = useCallback((presetId) => {
-    setTheme((prev) => {
-      const preset = foundationPresets[presetId] || foundationPresets.ember;
-      const glass = glassPresetDefaults[presetId] || glassPresetDefaults.ember;
-      const mode = prev.foundationMode === 'light' ? 'light' : 'dark';
-      const colors = preset[mode];
-      return {
-        ...prev,
-        foundationPreset: preset.id,
-        primaryColor: colors.accent,
-        pageColor: colors.canvas,
-        panelStrength: glass.panelStrength,
-        navOutline: glass.navOutline,
-        backgroundUrl: glass.backgroundUrl,
-      };
+  /** Drop every override, keeping preset / surface / mode. */
+  const resetOverrides = useCallback(() => {
+    setLook((prev) => ({ ...prev, overrides: {} }));
+  }, []);
+
+  /**
+   * Switch preset WITHOUT discarding customization — the whole point of the
+   * layered model. Overrides ride along and show as modified against the new base.
+   */
+  const applyPreset = useCallback((presetId) => {
+    if (!foundationPresets[presetId]) return;
+    setLook((prev) => ({ ...prev, presetId }));
+  }, []);
+
+  const setSurface = useCallback((surface) => {
+    setLook((prev) => ({ ...prev, surface: surface === 'foundation' ? 'foundation' : 'glass' }));
+  }, []);
+
+  const setMode = useCallback((mode) => {
+    setLook((prev) => ({ ...prev, mode: mode === 'light' ? 'light' : 'dark' }));
+  }, []);
+
+  /** Back-compat shim for callers still passing flat theme patches. */
+  const updateTheme = useCallback((updates = {}) => {
+    setLook((prev) => {
+      let next = { ...prev, overrides: { ...prev.overrides } };
+      for (const [rawKey, value] of Object.entries(updates)) {
+        const key = LEGACY_FIELD_ALIASES[rawKey] || rawKey;
+        if (key === '__surface') next.surface = value === 'foundation' ? 'foundation' : 'glass';
+        else if (key === '__mode') next.mode = value === 'light' ? 'light' : 'dark';
+        else if (key === '__preset') {
+          if (foundationPresets[value]) next.presetId = value;
+        } else if (CONTROLS_BY_ID[key]) next.overrides[key] = value;
+      }
+      return next;
     });
   }, []);
 
+  /** Full reset back to the shipped default look. */
   const resetTheme = useCallback(() => {
-    setTheme({ ...defaultTheme });
+    setLook({ ...DEFAULT_LOOK, overrides: {} });
     try {
-      localStorage.removeItem(THEME_STORAGE_KEY);
+      localStorage.removeItem(LOOK_STORAGE_KEY);
     } catch {
       /* ignore */
     }
   }, []);
 
-  return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        updateTheme,
-        applyLookPreset,
-        applyGlassPreset,
-        resetTheme,
-        typographyBundles,
-        foundationPresets,
-        foundationPresetList,
-        glassPresetDefaults,
-        defaultTheme,
-      }}
-    >
-      {children}
-    </ThemeContext.Provider>
+  // ── Saved looks ────────────────────────────────────────────────────────────
+
+  const saveCurrentAsLook = useCallback(
+    (name) => {
+      const trimmed = String(name || '').trim();
+      if (!trimmed) return null;
+      const base = slugify(trimmed);
+      const existing = new Set(savedLooks.map((l) => l.id));
+      let id = base;
+      let n = 2;
+      while (existing.has(id)) id = `${base}-${n++}`;
+
+      const entry = { ...normalizeLook(look), id, name: trimmed };
+      setSavedLooks((prev) => [...prev, entry]);
+      return entry;
+    },
+    [look, savedLooks]
   );
+
+  const applySavedLook = useCallback(
+    (id) => {
+      const entry = savedLooks.find((l) => l.id === id);
+      if (!entry) return;
+      setLook(normalizeLook(entry));
+    },
+    [savedLooks]
+  );
+
+  const deleteSavedLook = useCallback((id) => {
+    setSavedLooks((prev) => prev.filter((l) => l.id !== id));
+  }, []);
+
+  // ── Export / import ────────────────────────────────────────────────────────
+
+  /** The exact shape phase 3 will store at sites/<name>.json. */
+  const exportLook = useCallback(
+    (name) => JSON.stringify({ name: name || null, look: normalizeLook(look) }, null, 2),
+    [look]
+  );
+
+  const importLook = useCallback((json) => {
+    try {
+      const parsed = typeof json === 'string' ? JSON.parse(json) : json;
+      const candidate = parsed && parsed.look ? parsed.look : parsed;
+      const normalized = normalizeLook(candidate);
+      setLook(normalized);
+      return { ok: true, look: normalized };
+    } catch (e) {
+      return { ok: false, error: e.message || 'Could not read that look file.' };
+    }
+  }, []);
+
+  // ── Compatibility view ─────────────────────────────────────────────────────
+
+  const theme = useMemo(() => legacyThemeView(resolved), [resolved]);
+
+  const value = useMemo(
+    () => ({
+      // new API
+      look,
+      values: resolved.values,
+      meta: resolved.meta,
+      modified: resolved.modified,
+      isModified: (id) => resolved.modified.includes(id),
+      presetValueFor: (id) => presetValues(look)[id],
+      setOverride,
+      resetControl,
+      resetOverrides,
+      applyPreset,
+      setSurface,
+      setMode,
+      savedLooks,
+      saveCurrentAsLook,
+      applySavedLook,
+      deleteSavedLook,
+      exportLook,
+      importLook,
+      // compatibility
+      theme,
+      updateTheme,
+      resetTheme,
+      foundationPresetList,
+      glassPresetDefaults,
+    }),
+    [
+      look,
+      resolved,
+      theme,
+      savedLooks,
+      setOverride,
+      resetControl,
+      resetOverrides,
+      applyPreset,
+      setSurface,
+      setMode,
+      saveCurrentAsLook,
+      applySavedLook,
+      deleteSavedLook,
+      exportLook,
+      importLook,
+      updateTheme,
+      resetTheme,
+    ]
+  );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export const useTheme = () => useContext(ThemeContext);

@@ -8,19 +8,13 @@ export function useScrollReveal() {
     const scrollElement = scrollElementRef.current;
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Check theme override — stored on <html> by useTheme
-    const themeRespectsReduced =
-      document.documentElement.dataset.navStyle !== undefined; // proxy: theme vars have been applied
-    const themeMotionOff =
-      prefersReduced &&
-      localStorage.getItem('shopsite-theme-v4') &&
-      (() => {
-        try {
-          return JSON.parse(localStorage.getItem('shopsite-theme-v4')).respectReducedMotion !== false;
-        } catch { return true; }
-      })();
+    // The theme's reduced-motion setting arrives as a data attribute written by
+    // useTheme (see theme/resolveLook.js). Reading the attribute instead of
+    // localStorage keeps this hook out of the storage-key business — the key has
+    // already been renamed once.
+    const respectReduced = document.documentElement.dataset.respectReducedMotion !== 'false';
 
-    if (!hasScrollElement || !scrollElement || (prefersReduced && themeMotionOff !== false)) {
+    if (!hasScrollElement || !scrollElement || (prefersReduced && respectReduced)) {
       return undefined;
     }
 
@@ -60,7 +54,6 @@ export function useScrollReveal() {
       ) || 0;
       if (depth <= 0.01) return;
 
-      const scrollTop = scrollElement.scrollTop;
       const viewH = scrollElement.clientHeight;
 
       parallaxElements().forEach((el) => {

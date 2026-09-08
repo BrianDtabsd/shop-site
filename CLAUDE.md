@@ -13,13 +13,18 @@ look system is preset-driven and lives inside this repo (see **Theme system** be
 ## Commands
 
 ```bash
-npm run dev       # Start dev server (http://localhost:5173)
-npm run build     # Production build to dist/
-npm run preview   # Preview production build
-npm run lint      # Run ESLint
+npm run dev        # Start dev server (http://localhost:5173)
+npm run build      # Production build to dist/
+npm run preview    # Preview production build
+npm run lint       # Run ESLint
+npm test           # Run Vitest once
+npm run test:watch # Vitest in watch mode
 ```
 
-Lint uses ESLint's flat config in `eslint.config.js` and covers the app and Worker source. No test framework is configured.
+Lint uses ESLint's flat config in `eslint.config.js` and covers the app and Worker
+source. Tests use Vitest (pinned to v2 — v3+ requires Vite 6, and this project is on
+Vite 5). Coverage is deliberately focused on `src/theme/`, where the pure resolver and
+migration logic live; there are no component tests.
 
 ## Architecture
 
@@ -49,33 +54,65 @@ element to `useScrollReveal` — scroll-linked code must use that context, not `
 
 This is the heart of the template and the thing to understand first.
 
+### The look config
+
+All visual state is one small serializable object:
+
+```js
+{ presetId: 'ember', surface: 'glass', mode: 'dark',
+  overrides: { accent: '#ff6b00', panelStrength: 0.7 } }
+```
+
+`overrides` holds **only** what the user explicitly changed. That separation is
+load-bearing: a control is "modified" iff its key is present, resetting a control
+deletes the key, switching presets leaves overrides intact, and exporting a site's
+look is just serializing this object.
+
+### Modules
+
 **`src/theme/foundationPresets.js`** defines five named looks — `ember`, `consciousness`,
-`sansFirst`, `inkPaper`, `monochrome`. Each preset carries a font set (`display`, `heading`,
-`body`, `label`), a `serifScope` (`none` | `display` | `titles`) that keeps serif faces off body
-and UI copy, and **complete light and dark palettes**. `glassPresetDefaults` in the same file
-layers glass-only values (panel strength, nav outline) on top of the shared preset.
+`sansFirst`, `inkPaper`, `monochrome`. Each carries a font set (`display`, `heading`,
+`body`, `label`), a `serifScope` (`none` | `display` | `titles`) keeping serif faces off
+body and UI copy, and **complete light and dark palettes**. `glassPresetDefaults` layers
+glass-only values (panel strength, nav outline) on top.
 
-**`src/hooks/useTheme.jsx`** holds the active theme and applies it. Three fields drive everything:
+**`src/theme/controls.js`** is the control registry. Every customizable setting is
+declared as data: `id`, `group`, `label`, input type, which surfaces it `appliesTo`, a
+`reason` shown when it doesn't apply, and `presetValue(ctx)` giving its un-overridden
+value. **Adding a setting means adding a registry entry** — the Look tab renders itself
+from this list and derives modified-state and reset for free.
 
-| Field | Values | Meaning |
-|---|---|---|
-| `surfaceSystem` | `glass` \| `foundation` | Which rendering system paints surfaces |
-| `foundationPreset` | one of the five preset ids | Shared font + color pair |
-| `foundationMode` | `light` \| `dark` | Which half of the preset palette is used |
+**`src/theme/resolveLook.js`** is a pure function — no React, no DOM, no storage —
+layering **preset palette → surface defaults → user overrides** into a complete token
+set. It also exports `legacyThemeView`, the flat `theme.*` shape older components still
+read; that mapping is covered by tests, so don't inline it.
 
-The hook writes the resolved values to `:root` as CSS custom properties and sets
-`document.documentElement.dataset.foundationMode`. Design tokens are the `--ds-color-*` family
-(`canvas`, `surface`, `surfaceSubtle`, `ink`, `inkMuted`, `inkFaint`, `line`, `accent`,
-`accentHover`, `accentSoft`, plus `--ds-button-ink`/`--ds-button-ink-text`). Motion vars
-(`--reveal-fade-speed`, `--reveal-line-speed`, `--parallax-depth`, `--float-strength`) come from
-the same place.
+**`src/theme/migrateLook.js`** converts old flat `shopsite-theme-v*` blobs into look
+configs. **Its step order is deliberate** — `panelStrength` must be recovered from
+`transparencyLevel` *before* dead fields are dropped, or v2/v3 users silently lose their
+panel setting. There is a regression test for exactly this.
 
-**Prefer these tokens over hardcoded Tailwind colors.** A component that reads `--ds-color-ink`
-follows every preset and both modes for free; one that hardcodes `text-white` breaks in light mode.
+**`src/hooks/useTheme.jsx`** is now thin: hold config, call the resolver, write tokens
+and `data-*` attributes, persist. It exposes both the new API (`look`, `values`,
+`modified`, `setOverride`, `resetControl`, `applyPreset`, saved looks, export/import)
+and the legacy `theme` / `updateTheme` shims.
 
-**`src/components/LookEditor.jsx`** is the preset picker UI in the Studio "Look" tab. Adding a
-new look means adding an entry to `foundationPresets` (plus its `glassPresetDefaults` row) — it
-then appears in the picker automatically. It does **not** mean copying the project.
+**`src/components/LookEditor.jsx`** renders the Look tab from the registry: one gallery
+holding built-in presets *and* the user's saved looks, then surface/mode, then all
+control groups, then a footer showing the change count.
+
+### Rules
+
+**Prefer `--ds-*` tokens over hardcoded Tailwind colors.** A component reading
+`--ds-color-ink` follows every preset and both modes for free; one hardcoding
+`text-white` breaks in light mode.
+
+**Never hide a control based on surface.** Controls that don't apply render *disabled
+with their reason*. Panels that change shape when you flip a switch are what made the
+old editor feel like separate templates rather than one system.
+
+**Never fork the project to try a new look.** Add a preset entry, or save a customized
+look from the Studio.
 
 ## Studio
 
@@ -86,20 +123,25 @@ The gear button opens `SettingsPanel`, which has five tabs: **Setup** (`SetupGui
 Studio mode is on by default. Turn it off for client deploys with `VITE_SHOPSITE_STUDIO_MODE=off`,
 or at runtime with `?studio=on|off` (persisted). See `src/lib/studioMode.js`.
 
-**All studio edits persist to `localStorage` only**, under these keys:
+**Studio edits persist to `localStorage`**, under these keys:
 
-- `shopsite-theme-v4` — theme/preset state (`v2`/`v3` are read for migration)
+- `shopsite-look-v5` — the look config
+- `shopsite-saved-looks-v1` — the user's named looks
 - `shopsite-site-meta-overrides-v1` — brand name, titles, meta description
 - `shopsite-template-content-overrides-v1` — marketing copy overrides
 - `shopsite-visibility-v1` — which pages/sections are shown
 - `shopsite-studio-mode`, `shopsite-studio-panel-width-v1` — studio UI state
 
+`shopsite-theme-v4`, `v3` and `v2` are read once and migrated to `v5`. They are left in
+place rather than deleted, so a bad migration is recoverable.
+
 ### Known limitation
 
-There is currently **no export or import of studio configuration**. A customized site exists only
-in one browser profile and cannot be turned into a standalone deployable build. Making this state
-serializable to a JSON site-config — so a configured site can be duplicated, checked in, and built
-independently — is the main outstanding architectural work.
+The Look tab can export and import a look as JSON, but **brand, copy, and page
+visibility are still localStorage-only** — a fully configured site cannot yet be built
+as a standalone deployable. Phase 3 adds `sites/<name>.json` and
+`npm run build --site=<name>`; the exported look object is already that file's format.
+See `docs/superpowers/specs/2026-09-08-studio-look-system-design.md`.
 
 ## Content and branding
 
