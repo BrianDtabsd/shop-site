@@ -37,7 +37,7 @@ export default function Hero() {
   return (
     <section
       id="system-view"
-      className={`relative min-h-[760px] lg:min-h-[820px] overflow-hidden px-6 md:px-8 lg:px-12 border-b ${
+      className={`hero-shell relative min-h-[760px] lg:min-h-[820px] overflow-hidden px-6 md:px-8 lg:px-12 border-b ${
         isFoundation ? 'border-[color:var(--ds-color-line)]' : 'border-transparent'
       }`}
     >
