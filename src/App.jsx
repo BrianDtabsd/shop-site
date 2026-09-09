@@ -44,27 +44,28 @@ function AppRoutes() {
   );
 }
 
+/**
+ * Site canvas with the Studio floating over it.
+ *
+ * The site pane is ALWAYS full width. The Studio used to take a column out of it,
+ * which meant every layout decision was judged at a width no visitor would ever
+ * see — and it made container-relative CSS disagree with viewport units. Floating
+ * the panel keeps the canvas honest; `useStudioShell` handles getting the panel
+ * out of your way when it covers what you're editing.
+ */
 function StudioSplitShell({ children }) {
   const studioEnabled = isStudioMode();
-  const { isOpen, panelWidth, sheetHeight, isDragging } = useStudioShell();
+  const { isOpen, sheetHeight, isDragging, isMoving } = useStudioShell();
   const { setScrollElement } = useScrollContainer();
 
   return (
     <div
       className={`studio-split ${studioEnabled ? '' : 'is-site-only'} ${
         isOpen ? 'is-open' : ''
-      } ${isDragging ? 'is-dragging' : ''}`}
+      } ${isDragging || isMoving ? 'is-dragging' : ''}`}
       style={{ '--studio-sheet-height': `${sheetHeight}px` }}
     >
-      <div
-        className="studio-site-pane"
-        ref={setScrollElement}
-        style={
-          isOpen
-            ? { width: `calc(100% - ${panelWidth}px)`, maxWidth: `calc(100% - ${panelWidth}px)` }
-            : undefined
-        }
-      >
+      <div className="studio-site-pane" ref={setScrollElement}>
         {children}
       </div>
       {studioEnabled ? <SettingsPanel /> : null}

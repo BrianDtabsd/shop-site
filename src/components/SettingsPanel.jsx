@@ -111,7 +111,15 @@ function SettingsPanel() {
     openStudio,
     closeStudio,
     panelWidth,
+    panelPos,
+    isDocked,
     beginResize,
+    beginMove,
+    dockLeft,
+    dockRight,
+    isMoving,
+    isAdjusting,
+    setAdjusting,
     toggleSheet,
     resizeSheet,
     endSheetResize,
@@ -150,76 +158,128 @@ function SettingsPanel() {
     );
   }
 
+  const resizeHandle = (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize Studio"
+      title="Drag to resize"
+      onPointerDown={(e) => {
+        e.preventDefault();
+        if (window.matchMedia('(max-width: 900px)').matches) {
+          sheetInteraction.current = {
+            pointerId: e.pointerId,
+            startY: e.clientY,
+            moved: false,
+          };
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } else {
+          beginResize(e.clientX);
+        }
+      }}
+      onPointerMove={(e) => {
+        const interaction = sheetInteraction.current;
+        if (!interaction || interaction.pointerId !== e.pointerId) return;
+        if (Math.abs(e.clientY - interaction.startY) > 5) {
+          interaction.moved = true;
+          resizeSheet(window.innerHeight - e.clientY);
+        }
+      }}
+      onPointerUp={(e) => {
+        const interaction = sheetInteraction.current;
+        if (!interaction || interaction.pointerId !== e.pointerId) return;
+        if (!interaction.moved) toggleSheet();
+        endSheetResize();
+        sheetInteraction.current = null;
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      }}
+      onPointerCancel={() => {
+        sheetInteraction.current = null;
+        endSheetResize();
+      }}
+      className={`studio-resize-handle ${isDragging ? 'is-dragging' : ''}`}
+    />
+  );
+
   return (
     <>
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize Studio"
-        title="Drag to resize"
-        onPointerDown={(e) => {
-          e.preventDefault();
-          if (window.matchMedia('(max-width: 900px)').matches) {
-            sheetInteraction.current = {
-              pointerId: e.pointerId,
-              startY: e.clientY,
-              moved: false,
-            };
-            e.currentTarget.setPointerCapture(e.pointerId);
-          } else {
-            beginResize(e.clientX);
-          }
-        }}
-        onPointerMove={(e) => {
-          const interaction = sheetInteraction.current;
-          if (!interaction || interaction.pointerId !== e.pointerId) return;
-          if (Math.abs(e.clientY - interaction.startY) > 5) {
-            interaction.moved = true;
-            resizeSheet(window.innerHeight - e.clientY);
-          }
-        }}
-        onPointerUp={(e) => {
-          const interaction = sheetInteraction.current;
-          if (!interaction || interaction.pointerId !== e.pointerId) return;
-          if (!interaction.moved) toggleSheet();
-          endSheetResize();
-          sheetInteraction.current = null;
-          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-          }
-        }}
-        onPointerCancel={() => {
-          sheetInteraction.current = null;
-          endSheetResize();
-        }}
-        className={`studio-resize-handle ${isDragging ? 'is-dragging' : ''}`}
-      />
       <aside
         id="settings-panel"
-        className={`studio-panel ${isSheetExpanded ? 'is-sheet-expanded' : ''}`}
-        style={{ width: panelWidth }}
+        className={`studio-panel ${isSheetExpanded ? 'is-sheet-expanded' : ''} ${
+          isDocked ? 'is-docked' : 'is-floating'
+        } ${isMoving ? 'is-moving' : ''} ${isAdjusting ? 'is-adjusting' : ''}`}
+        style={
+          isDocked
+            ? { width: panelWidth }
+            : { width: panelWidth, left: panelPos.left, top: panelPos.top, right: 'auto' }
+        }
         contentEditable={false}
+        /* While a control is actively being dragged the panel fades out, so the
+           site behind it stays readable. Pointer capture means we still get the
+           pointerup even if the pointer leaves the control. */
+        onPointerDown={(e) => {
+          if (e.target.closest('input, select, textarea')) setAdjusting(true);
+        }}
+        onPointerUp={() => setAdjusting(false)}
+        onPointerCancel={() => setAdjusting(false)}
       >
-        <div className="studio-panel__header">
-          <div>
+        {resizeHandle}
+        <div
+          className="studio-panel__header"
+          onPointerDown={(e) => {
+            if (e.target.closest('button')) return;
+            if (window.matchMedia('(max-width: 900px)').matches) return;
+            e.preventDefault();
+            beginMove(
+              e.clientX,
+              e.clientY,
+              e.currentTarget.parentElement.getBoundingClientRect()
+            );
+          }}
+        >
+          <div className="studio-panel__grip">
             <h2 className="studio-panel__title">ShopSite Studio</h2>
-            <p className="studio-panel__sub">Edit live · drag the edge to resize</p>
+            <p className="studio-panel__sub">
+              Drag this bar to move · fades while you adjust
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={closeStudio}
-            className="studio-icon-btn"
-            aria-label="Close Studio"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+          <div className="studio-panel__actions">
+            <button
+              type="button"
+              onClick={dockLeft}
+              className="studio-icon-btn studio-icon-btn--sm"
+              aria-label="Dock Studio to the left"
+              title="Dock left"
+            >
+              ⇤
+            </button>
+            <button
+              type="button"
+              onClick={dockRight}
+              className="studio-icon-btn studio-icon-btn--sm"
+              aria-label="Dock Studio to the right"
+              title="Dock right"
+            >
+              ⇥
+            </button>
+            <button
+              type="button"
+              onClick={closeStudio}
+              className="studio-icon-btn"
+              aria-label="Close Studio"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="studio-tabs" role="tablist">

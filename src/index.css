@@ -633,6 +633,23 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
 .hero-shell {
   container-type: inline-size;
   container-name: hero;
+  /* Must track the section's px-6 / md:px-8 / lg:px-12 and the content's
+     max-w-7xl. Decoration reads these so it shares the text's grid instead of
+     running to the display edge. */
+  --hero-gutter: 1.5rem;
+  --hero-col: 80rem;
+}
+
+@media (min-width: 768px) {
+  .hero-shell {
+    --hero-gutter: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-shell {
+    --hero-gutter: 3rem;
+  }
 }
 
 .hero-visual {
@@ -643,52 +660,119 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
   overflow: hidden;
 }
 
-/* Caserunr-style quadrant + concentric rings.
-   All three share one anchor point so the rings stay concentric with the blob,
-   and the anchor is a fraction of --orb rather than of the container — that is
-   what keeps the same amount of circle on screen at every width. */
-.hero-visual--circle {
-  --orb: clamp(300px, 46cqw, 560px);
-  --orb-x: calc(100% - var(--orb) * 0.2);
-  --orb-y: calc(100% + var(--orb) * 0.11);
+/*
+ * Slab stack — the hero's primary decoration.
+ *
+ * The wrapper is snapped to the SAME column as the hero copy: centred, capped at
+ * --hero-col, inset by --hero-gutter. So `right: 0` on a slab lands exactly on the
+ * content's right edge, mirroring the text indent on the left. The stack bleeds
+ * downward only; horizontal bleed is what made the old circle look unplaced.
+ */
+.hero-visual--slabs {
+  inset: 0 auto 0 50%;
+  translate: -50% 0;
+  width: min(100% - var(--hero-gutter) * 2, var(--hero-col));
+  /* Slabs run off the bottom; the hero section clips them. */
+  overflow: visible;
 }
 
-.hero-visual--circle .hero-visual__blob,
-.hero-visual--circle .hero-visual__ring {
+.hero-visual--slabs .hero-slab {
   position: absolute;
-  left: var(--orb-x);
-  top: var(--orb-y);
-  /* `translate` rather than `transform`, so the entrance animation and the
-     parallax transform stay free to compose on top. */
-  translate: -50% -50%;
-  border-radius: 50%;
+  bottom: 0;
+  border-radius: var(--card-radius, 1.25rem);
+  /* Parallax rides `translate` so the entrance animation keeps `transform`.
+     The two properties compose instead of overwriting each other. */
+  translate: 0 calc(var(--parallax-y, 0px) * var(--depth, 1));
+  animation: hero-slab-in 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, translate;
 }
 
-.hero-visual--circle .hero-visual__blob {
-  width: var(--orb);
-  height: var(--orb);
+/* Widths and offsets are percentages of the CONTENT COLUMN, so the whole
+   composition rescales with the grid rather than the window. */
+.hero-visual--slabs .hero-slab--back {
+  right: 0;
+  width: 58%;
+  height: 74%;
+  margin-bottom: -14%;
+  --depth: 0.35;
+  background: color-mix(in srgb, var(--ds-color-surface-subtle) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ds-color-line) 70%, transparent);
+  animation-delay: 0.02s;
+}
+
+.hero-visual--slabs .hero-slab--mid {
+  right: 7%;
+  width: 39%;
+  height: 55%;
+  margin-bottom: -7%;
+  --depth: 0.8;
+  background: color-mix(in srgb, var(--ds-color-accent-soft) 92%, transparent);
+  animation-delay: 0.12s;
+}
+
+.hero-visual--slabs .hero-slab--front {
+  right: 15%;
+  width: 23%;
+  height: 35%;
+  margin-bottom: -1%;
+  --depth: 1.35;
   background: var(--ds-color-accent);
-  opacity: 0.92;
-  animation: hero-blob-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.22s;
 }
 
-.hero-visual--circle .hero-visual__ring {
-  border: 1px solid color-mix(in srgb, var(--ds-color-ink) 18%, transparent);
-  animation: hero-ring-in 1.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+/* A hairline that runs the full column width, tying the stack back to the grid
+   and making the right-edge alignment legible. */
+.hero-visual--slabs .hero-slab__rule {
+  position: absolute;
+  right: 0;
+  left: 0;
+  bottom: 22%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--ds-color-line) 85%, transparent) 22%,
+    color-mix(in srgb, var(--ds-color-line) 85%, transparent)
+  );
+  translate: 0 calc(var(--parallax-y, 0px) * 0.55);
+  animation: hero-rule-in 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
 }
 
-.hero-visual--circle .hero-visual__ring--outer {
-  /* 740/560 and 620/560 — the ratios the old fixed sizes had to each other. */
-  width: calc(var(--orb) * 1.32);
-  height: calc(var(--orb) * 1.32);
-  animation-delay: 0.08s;
+/* Glass keeps the stack airy so the panels behind stay readable. */
+[data-surface='glass'] .hero-visual--slabs .hero-slab--back {
+  background: color-mix(in srgb, var(--ds-color-surface) 42%, transparent);
+  backdrop-filter: blur(5px);
 }
 
-.hero-visual--circle .hero-visual__ring--inner {
-  width: calc(var(--orb) * 1.11);
-  height: calc(var(--orb) * 1.11);
-  border-color: color-mix(in srgb, var(--ds-color-ink) 12%, transparent);
-  animation-delay: 0.16s;
+[data-surface='glass'] .hero-visual--slabs .hero-slab--mid {
+  background: color-mix(in srgb, var(--ds-color-accent-soft) 55%, transparent);
+}
+
+[data-surface='glass'] .hero-visual--slabs .hero-slab--front {
+  background: color-mix(in srgb, var(--ds-color-accent) 82%, transparent);
+}
+
+@keyframes hero-slab-in {
+  from {
+    opacity: 0;
+    transform: translateY(34px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hero-rule-in {
+  from {
+    opacity: 0;
+    transform: scaleX(0.6);
+    transform-origin: right center;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .hero-visual__explore {
@@ -713,6 +797,14 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
   text-transform: uppercase;
   background: color-mix(in srgb, var(--ds-color-canvas) 18%, transparent);
   animation: hero-explore-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+}
+
+/* In the slab layout the wrapper IS the content column, so right:0 puts the
+   scroll cue on the same vertical as the copy's right edge. */
+.hero-visual--slabs .hero-visual__explore {
+  right: 0;
+  bottom: clamp(1.5rem, 4cqw, 3rem);
+  z-index: 2;
 }
 
 .hero-visual__explore iconify-icon {
@@ -751,50 +843,6 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
   animation-delay: 0.23s;
 }
 
-/* Glass mode: soft accent orb */
-.hero-visual--glass-orb {
-  --orb: clamp(280px, 44cqw, 520px);
-  inset: auto;
-  left: calc(100% - var(--orb) * 0.2);
-  top: calc(100% + var(--orb) * 0.11);
-  translate: -50% -50%;
-  width: var(--orb);
-  height: var(--orb);
-  border-radius: 50%;
-  background:
-    radial-gradient(
-      circle at 40% 40%,
-      color-mix(in srgb, var(--primary-color) 42%, transparent),
-      color-mix(in srgb, var(--primary-color) 8%, transparent) 55%,
-      transparent 72%
-    );
-  filter: blur(2px);
-  opacity: 0.85;
-  animation: hero-blob-in 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes hero-blob-in {
-  from {
-    opacity: 0;
-    transform: translate3d(8%, 10%, 0) scale(0.92);
-  }
-  to {
-    opacity: 0.92;
-    transform: none;
-  }
-}
-
-@keyframes hero-ring-in {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 @keyframes hero-explore-in {
   from {
     opacity: 0;
@@ -818,28 +866,44 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-visual--circle .hero-visual__blob,
-  .hero-visual--circle .hero-visual__ring,
+  .hero-visual--slabs .hero-slab,
+  .hero-visual--slabs .hero-slab__rule,
   .hero-visual__explore,
-  .hero-visual--stripes .hero-visual__stripe,
-  .hero-visual--glass-orb {
+  .hero-visual--stripes .hero-visual__stripe {
     animation: none;
+  }
+
+  /* No scroll-driven separation either — the layers sit where they land. */
+  .hero-visual--slabs .hero-slab,
+  .hero-visual--slabs .hero-slab__rule {
+    translate: none;
   }
 }
 
 /* A container query, not a media query: this is about how much room the SITE has,
    which is not the same as the window once the Studio is open over or beside it. */
 @container hero (max-width: 640px) {
-  .hero-visual--circle {
-    --orb: clamp(240px, 62cqw, 420px);
-    /* Sit the circle a little further into the corner on small canvases. */
-    --orb-x: calc(100% - var(--orb) * 0.12);
-    --orb-y: calc(100% + var(--orb) * 0.06);
+  /* On a narrow canvas the three-step staircase gets cramped, so the stack
+     flattens: wider slabs, less inset, and the hairline drops out. */
+  .hero-visual--slabs .hero-slab--back {
+    width: 74%;
+    height: 60%;
   }
 
-  .hero-visual--circle .hero-visual__ring--outer,
-  .hero-visual--circle .hero-visual__ring--inner {
-    opacity: 0.7;
+  .hero-visual--slabs .hero-slab--mid {
+    right: 5%;
+    width: 50%;
+    height: 44%;
+  }
+
+  .hero-visual--slabs .hero-slab--front {
+    right: 12%;
+    width: 30%;
+    height: 28%;
+  }
+
+  .hero-visual--slabs .hero-slab__rule {
+    display: none;
   }
 
   .hero-visual--stripes .hero-visual__stripe {
@@ -861,93 +925,121 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Studio split shell — site + opaque panel, drag to resize
+   Studio shell — floating window over a full-width site
    ───────────────────────────────────────────────────────────── */
 
 .studio-split {
-  display: flex;
+  display: block;
   width: 100%;
   height: 100vh;
   height: 100dvh;
   min-height: 100vh;
-  align-items: stretch;
   overflow: hidden;
 }
 
 .studio-split.is-dragging {
-  cursor: col-resize;
   user-select: none;
 }
 
 .studio-split.is-dragging * {
-  cursor: col-resize !important;
   user-select: none !important;
 }
 
+/* The site is always full width — never a column beside the Studio. Judging a
+   layout at a width no visitor will ever see is how the hero circle bug hid. */
 .studio-site-pane {
-  flex: 1 1 auto;
-  min-width: 0;
+  width: 100%;
   height: 100%;
   min-height: 0;
   overflow: auto;
   scroll-behavior: smooth;
   position: relative;
-  transition: width 0.15s ease;
-}
-
-.studio-split.is-dragging .studio-site-pane {
-  transition: none;
 }
 
 .studio-resize-handle {
-  position: relative;
-  flex: 0 0 6px;
-  width: 6px;
-  margin-left: -3px;
-  z-index: 90;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 10px;
+  z-index: 2;
   cursor: col-resize;
   touch-action: none;
   background: transparent;
 }
 
-.studio-resize-handle::before {
-  content: '';
-  position: absolute;
-  inset: 0 -4px;
-}
-
 .studio-resize-handle::after {
   content: '';
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 2px;
+  top: 12px;
+  bottom: 12px;
+  left: 4px;
   width: 2px;
+  border-radius: 2px;
   background: #3f3f46;
   transition: background 0.15s ease, width 0.15s ease, left 0.15s ease;
 }
 
 .studio-resize-handle:hover::after,
 .studio-resize-handle.is-dragging::after {
-  left: 1px;
+  left: 3px;
   width: 4px;
   background: #38bdf8;
 }
 
 .studio-panel {
-  flex: 0 0 auto;
+  position: fixed;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  position: sticky;
-  top: 0;
   z-index: 80;
   background: #101014;
   color: #e4e4e7;
-  border-left: 1px solid #27272a;
-  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45);
+  border: 1px solid #2b2b31;
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
   font-size: 13px;
   overflow: hidden;
+  /* Fading is the whole point of floating — see .is-adjusting below. */
+  transition: opacity 0.16s ease;
+}
+
+/* Docked: pinned to the right edge with a margin, so it reads as a window. */
+.studio-panel.is-docked {
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+}
+
+/* Floating: `left`/`top` come from inline style; height is a viewport clamp so a
+   dragged window never runs off the bottom. */
+.studio-panel.is-floating {
+  bottom: auto;
+  height: min(82vh, 860px);
+}
+
+.studio-panel.is-moving {
+  cursor: grabbing;
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.65);
+}
+
+/*
+ * The occlusion fix: while a slider/picker is actively being dragged, the panel
+ * drops out of the way visually so the change on the site behind it is readable.
+ * Kept above zero and interactive, so the control still tracks the pointer.
+ */
+.studio-panel.is-adjusting {
+  opacity: 0.32;
+}
+
+.studio-panel.is-adjusting:hover {
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .studio-panel.is-adjusting,
+  .studio-panel.is-adjusting:hover {
+    opacity: 1;
+  }
 }
 
 .studio-panel__header {
@@ -955,10 +1047,34 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid #27272a;
   background: #0c0c10;
   flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.studio-panel.is-moving .studio-panel__header {
+  cursor: grabbing;
+}
+
+.studio-panel__grip {
+  min-width: 0;
+}
+
+.studio-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.studio-icon-btn--sm {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .studio-panel__title {
@@ -1098,56 +1214,65 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
   background-color: #0284c7 !important;
 }
 
+/* Below 900px the floating window becomes a bottom sheet. Free positioning makes
+   no sense at this size, so docked/floating are overridden alike and the site is
+   padded so the sheet never covers the end of the page. */
 @media (max-width: 900px) {
-  .studio-split.is-open {
-    display: block;
-    position: relative;
-  }
-
   .studio-split.is-open .studio-site-pane {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 100%;
     padding-bottom: var(--studio-sheet-height, 72px);
     scroll-padding-bottom: var(--studio-sheet-height, 72px);
   }
 
-  .studio-resize-handle {
-    position: absolute;
+  .studio-panel,
+  .studio-panel.is-docked,
+  .studio-panel.is-floating {
+    position: fixed;
+    top: auto !important;
     right: 0;
-    bottom: calc(var(--studio-sheet-height, 72px) - 9px);
+    bottom: 0;
+    left: 0 !important;
+    width: 100% !important;
+    height: var(--studio-sheet-height, 72px);
+    border: 0;
+    border-top: 1px solid #27272a;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+    transition: height 0.2s ease, opacity 0.16s ease;
+  }
+
+  /* The grab bar sits at the top of the sheet rather than on its left edge. */
+  .studio-resize-handle {
+    top: 0;
+    bottom: auto;
     left: 0;
+    right: 0;
     width: 100%;
     height: 18px;
-    margin: 0;
-    z-index: 91;
+    z-index: 2;
     cursor: ns-resize;
   }
 
   .studio-resize-handle::after {
-    top: 8px;
+    top: 7px;
     bottom: auto;
     left: 50%;
-    right: 0;
+    right: auto;
     width: 48px;
     height: 3px;
     border-radius: 999px;
     transform: translateX(-50%);
   }
 
-  .studio-panel {
-    position: absolute;
-    top: auto;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: 100% !important;
-    height: var(--studio-sheet-height, 72px);
-    border-top: 1px solid #27272a;
-    border-left: 0;
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
-    transition: height 0.2s ease;
+  .studio-resize-handle:hover::after,
+  .studio-resize-handle.is-dragging::after {
+    left: 50%;
+    width: 56px;
+  }
+
+  /* Header is not a move handle on mobile; leave room for the grab bar. */
+  .studio-panel__header {
+    cursor: default;
+    padding-top: 18px;
   }
 
   .studio-panel:not(.is-sheet-expanded) .studio-tabs,

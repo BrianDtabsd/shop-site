@@ -3,13 +3,26 @@ import Button from './Button';
 import { useTemplateContent } from '../hooks/useTemplateContent';
 import { useTheme } from '../hooks/useTheme';
 
-/** Caserunr-style accent circle + rings (theme accent). */
-function HeroCircleVisual() {
+/**
+ * Grid-aligned slab stack.
+ *
+ * Replaces the old corner circle. A circle's bounding box has no relationship to
+ * a rectangular column, so cropping it at the gutter looked arbitrary no matter
+ * where the cut landed — the left edge of the page was indented and the right was
+ * not. Slabs share the page's geometry: the back slab's right edge sits exactly on
+ * the content column's right edge, mirroring the text indent, and the stack bleeds
+ * only downward, which reads as deliberate.
+ *
+ * Each slab carries `anim-parallax` individually with its own --depth, so the
+ * layers pull apart as you scroll rather than sliding as one flat sheet.
+ */
+function HeroSlabVisual() {
   return (
-    <div className="hero-visual hero-visual--circle anim-parallax" aria-hidden="true">
-      <div className="hero-visual__ring hero-visual__ring--outer" />
-      <div className="hero-visual__ring hero-visual__ring--inner" />
-      <div className="hero-visual__blob" />
+    <div className="hero-visual hero-visual--slabs" aria-hidden="true">
+      <div className="hero-slab hero-slab--back anim-parallax" />
+      <div className="hero-slab hero-slab--mid anim-parallax" />
+      <div className="hero-slab hero-slab--front anim-parallax" />
+      <div className="hero-slab__rule anim-parallax" />
       <div className="hero-visual__explore">
         <span>Explore</span>
         <iconify-icon icon="solar:arrow-down-linear" width="14" height="14"></iconify-icon>
@@ -41,15 +54,10 @@ export default function Hero() {
         isFoundation ? 'border-[color:var(--ds-color-line)]' : 'border-transparent'
       }`}
     >
-      {isFoundation ? (
-        preset === 'consciousness' ? (
-          <HeroStripeVisual />
-        ) : (
-          <HeroCircleVisual />
-        )
+      {isFoundation && preset === 'consciousness' ? (
+        <HeroStripeVisual />
       ) : (
-        /* Subtle glass orb so the hero isn’t empty in Glass mode either */
-        <div className="hero-visual hero-visual--glass-orb anim-parallax" aria-hidden="true" />
+        <HeroSlabVisual />
       )}
 
       <div className="z-10 max-w-7xl mr-auto ml-auto pt-10 pb-28 lg:pt-16 lg:pb-32 relative">
