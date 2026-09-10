@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { migrateThemeToLook, loadLookFromStorage, DEAD_FIELDS } from './migrateLook';
 import { presetValues, DEFAULT_LOOK } from './resolveLook';
 import { foundationPresets } from './foundationPresets';
+import { pageColorIds } from './pageColors';
 
 /** Minimal in-memory Storage stand-in. */
 function fakeStorage(entries = {}) {
@@ -26,14 +27,41 @@ describe('migrateThemeToLook', () => {
     expect(look).toMatchObject({ presetId: 'inkPaper', surface: 'foundation', mode: 'light' });
   });
 
-  it('records a genuine customization as an override', () => {
+  it('recovers a hand-picked accent as the nearest page-colour family', () => {
+    // Raw hexes are no longer expressible, but discarding a deliberately tuned
+    // look would be worse than landing on the family that means the same thing.
     const look = migrateThemeToLook({
       foundationPreset: 'ember',
       surfaceSystem: 'glass',
       foundationMode: 'dark',
       primaryColor: '#ff6b00',
     });
-    expect(look.overrides.accent).toBe('#ff6b00');
+    // hue 45.1° — Clay sits at 44°, the closest curated family.
+    expect(look.overrides.pageColor).toBe('clay');
+  });
+
+  it('never carries a raw hex into the new overrides', () => {
+    const look = migrateThemeToLook({
+      foundationPreset: 'ember',
+      surfaceSystem: 'glass',
+      foundationMode: 'dark',
+      primaryColor: '#3b82f6',
+      pageColor: '#0e1216',
+    });
+    for (const value of Object.values(look.overrides)) {
+      expect(String(value)).not.toMatch(/^#/);
+    }
+    expect(pageColorIds).toContain(look.overrides.pageColor);
+  });
+
+  it('maps a near-neutral accent to a grey family rather than a random hue', () => {
+    const dark = migrateThemeToLook({
+      foundationPreset: 'monochrome',
+      surfaceSystem: 'glass',
+      foundationMode: 'dark',
+      primaryColor: '#1a1a1b',
+    });
+    expect(dark.overrides.pageColor).toBe('graphite');
   });
 
   it('does NOT record a value that merely equals the preset default', () => {
@@ -70,8 +98,10 @@ describe('migrateThemeToLook', () => {
       surfaceSystem: 'glass',
       foundationMode: 'dark',
       pageColor: '   ',
+      backgroundUrl: '   ',
     });
     expect(look.overrides).not.toHaveProperty('pageColor');
+    expect(look.overrides).not.toHaveProperty('backgroundUrl');
   });
 
   it('falls back to defaults for junk input', () => {
@@ -144,7 +174,7 @@ describe('loadLookFromStorage', () => {
     const { look, migratedFrom } = loadLookFromStorage(storage, CURRENT, LEGACY);
     expect(migratedFrom).toBe('shopsite-theme-v4');
     expect(look.presetId).toBe('sansFirst');
-    expect(look.overrides.accent).toBe('#ff6b00');
+    expect(look.overrides.pageColor).toBe('clay');
   });
 
   it('preserves the v4 -> v3 -> v2 fallback chain', () => {

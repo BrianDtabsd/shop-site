@@ -48,7 +48,32 @@ export function useScrollReveal() {
     const parallaxElements = () =>
       scrollElement.querySelectorAll('.anim-parallax');
 
+    /*
+     * Direction-aware layer separation.
+     *
+     * `--parallax-y` is a function of POSITION, so it can only ever slide layers
+     * as you move down the page. `--scroll-spread` is a function of DIRECTION: it
+     * accumulates while you scroll down and unwinds while you scroll back up, so
+     * the hero slabs pull apart and draw together again as you reverse. It is
+     * clamped to 0…1 rather than tracking absolute offset, which means the effect
+     * is reversible from anywhere on the page instead of depending on where the
+     * hero happens to be.
+     */
+    let spread = 0;
+    let lastTop = scrollElement.scrollTop;
+    const SPREAD_PER_PX = 1 / 420;
+
     const handleScroll = () => {
+      const top = scrollElement.scrollTop;
+      const delta = top - lastTop;
+      lastTop = top;
+
+      if (delta !== 0) {
+        spread = Math.min(1, Math.max(0, spread + delta * SPREAD_PER_PX));
+        document.documentElement.style.setProperty('--scroll-spread', spread.toFixed(3));
+        document.documentElement.dataset.scrollDir = delta > 0 ? 'down' : 'up';
+      }
+
       const depth = parseFloat(
         getComputedStyle(document.documentElement).getPropertyValue('--parallax-depth')
       ) || 0;

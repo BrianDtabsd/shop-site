@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { CONTROL_GROUPS, controlsInGroup, appliesToSurface } from '../theme/controls';
+import { pageColorList } from '../theme/pageColors';
+import { resolveLook } from '../theme/resolveLook';
 
 /**
  * Studio "Look" tab.
@@ -47,48 +49,56 @@ function Segmented({ options, value, onChange, disabled }) {
   );
 }
 
-function Swatches({ options, value, onChange, disabled, allowCustom }) {
+/**
+ * Page-colour family picker.
+ *
+ * Deliberately not a colour input. Each chip is a whole curated family with a
+ * light and a dark version, generated from shared lightness steps so it stays
+ * legible against any template. "Template" hands colour back to the preset.
+ */
+function PageFamilyPicker({ value, onChange, mode }) {
+  const current = value || '';
   return (
-    <div className={disabled ? 'opacity-40' : ''}>
-      <div className="flex gap-2 flex-wrap">
-        {options.map((opt) => (
+    <div className="flex gap-2 flex-wrap">
+      <button
+        type="button"
+        title="Use the template's own colours"
+        onClick={() => onChange('')}
+        className={`h-9 rounded-lg border-2 px-2.5 text-[11px] transition-transform ${
+          current === ''
+            ? 'border-white text-white'
+            : 'border-white/15 text-slate-400 hover:border-white/40'
+        }`}
+      >
+        Template
+      </button>
+      {pageColorList.map((family) => {
+        const preview = family[mode];
+        const active = current === family.id;
+        return (
           <button
-            key={opt.value}
+            key={family.id}
             type="button"
-            title={opt.label}
-            disabled={disabled}
-            onClick={() => onChange(opt.value)}
-            className={`w-8 h-8 rounded-full border-2 transition-transform ${
-              value === opt.value
-                ? 'border-white scale-110'
-                : 'border-transparent hover:scale-105'
-            } ${disabled ? 'cursor-not-allowed' : ''}`}
-            style={{ backgroundColor: opt.value }}
-          />
-        ))}
-        {allowCustom ? (
-          <label
-            className={`w-8 h-8 rounded-full border-2 border-dashed border-slate-600 grid place-items-center ${
-              disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:border-slate-400'
+            title={family.name}
+            onClick={() => onChange(family.id)}
+            className={`h-9 w-9 overflow-hidden rounded-lg border-2 transition-transform ${
+              active ? 'border-white scale-110' : 'border-transparent hover:scale-105'
             }`}
-            title="Custom color"
+            style={{ backgroundColor: preview.canvas }}
           >
-            <input
-              type="color"
-              disabled={disabled}
-              value={/^#[0-9a-fA-F]{6}$/.test(value || '') ? value : '#000000'}
-              onChange={(e) => onChange(e.target.value)}
-              className="sr-only"
+            {/* accent stripe so families with similar paper stay distinguishable */}
+            <span
+              className="block h-2.5 w-full"
+              style={{ backgroundColor: preview.accent }}
             />
-            <span className="text-[13px] leading-none text-slate-400">+</span>
-          </label>
-        ) : null}
-      </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function ControlRow({ control, surface, value, modified, onChange, onReset }) {
+function ControlRow({ control, surface, mode, value, modified, onChange, onReset }) {
   const applicable = appliesToSurface(control, surface);
   const disabled = !applicable;
 
@@ -122,16 +132,6 @@ function ControlRow({ control, surface, value, modified, onChange, onReset }) {
         />
       ) : null}
 
-      {control.type === 'swatch' ? (
-        <Swatches
-          options={control.options}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          allowCustom={control.allowCustom}
-        />
-      ) : null}
-
       {control.type === 'range' ? (
         <input
           type="range"
@@ -157,14 +157,8 @@ function ControlRow({ control, surface, value, modified, onChange, onReset }) {
         />
       ) : null}
 
-      {control.type === 'color' ? (
-        <input
-          type="color"
-          value={/^#[0-9a-fA-F]{6}$/.test(value || '') ? value : '#888888'}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-8 w-full rounded bg-slate-800 border border-slate-700 disabled:cursor-not-allowed"
-        />
+      {control.type === 'pageFamily' ? (
+        <PageFamilyPicker value={value} onChange={onChange} mode={mode} />
       ) : null}
 
       {control.type === 'toggle' ? (
@@ -312,23 +306,18 @@ export default function LookEditor() {
             <div className="space-y-2">
               {savedLooks.map((entry) => {
                 const preset = foundationPresetList.find((p) => p.id === entry.presetId);
-                const preview = preset ? preset[entry.mode] : null;
+                // Resolve the saved look for real: its page colour is a family id
+                // and its spectrum has to be applied before the swatches mean
+                // anything. Reading the raw overrides would render nonsense.
+                const resolvedEntry = resolveLook(entry);
+                const c = resolvedEntry.colors;
                 return (
                   <LookCard
                     key={entry.id}
                     title={entry.name}
                     subtitle={`Based on ${preset?.name || entry.presetId} · ${entry.surface} · ${entry.mode}`}
                     fontFamily={preset?.fonts.display}
-                    swatches={
-                      preview
-                        ? [
-                            entry.overrides.pageColor || preview.canvas,
-                            preview.surface,
-                            preview.ink,
-                            entry.overrides.accent || preview.accent,
-                          ]
-                        : []
-                    }
+                    swatches={[c.canvas, c.surface, c.ink, c.accent]}
                     active={false}
                     onSelect={() => applySavedLook(entry.id)}
                     onDelete={() => deleteSavedLook(entry.id)}
@@ -389,6 +378,7 @@ export default function LookEditor() {
                   key={control.id}
                   control={control}
                   surface={surface}
+                  mode={mode}
                   value={values[control.id]}
                   modified={isModified(control.id)}
                   onChange={(v) => setOverride(control.id, v)}
@@ -402,6 +392,27 @@ export default function LookEditor() {
 
       {/* ── Footer ── */}
       <div className="space-y-3 border-t border-white/10 pt-4">
+        {/* A spectrum move can quietly push text below readable contrast, so the
+            actual measured ratio is always on screen. */}
+        <div
+          className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 ${
+            meta.contrastRatio < 4.5
+              ? 'bg-amber-500/15 text-amber-200'
+              : 'bg-white/5 text-slate-400'
+          }`}
+        >
+          <span className="text-[11px]">
+            Text contrast {meta.contrastRatio.toFixed(1)}:1
+          </span>
+          <span className="text-[10px] uppercase tracking-wider">
+            {meta.contrastRatio >= 7
+              ? 'AAA'
+              : meta.contrastRatio >= 4.5
+                ? 'AA'
+                : 'below AA'}
+          </span>
+        </div>
+
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] text-slate-400">
             {modified.length

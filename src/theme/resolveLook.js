@@ -26,6 +26,8 @@ import {
   glassPresetDefaults,
 } from './foundationPresets';
 import { CONTROLS, CONTROL_IDS, appliesToSurface } from './controls';
+import { getPageColor } from './pageColors';
+import { adjustPalette, contrastRatio } from './color';
 
 export const DEFAULT_LOOK = {
   presetId: 'ember',
@@ -83,6 +85,32 @@ function presetContext(look) {
 }
 
 /**
+ * Resolve the palette actually rendered, in two sanctioned steps.
+ *
+ * 1. CHOOSE A FAMILY. `pageColor` names a whole curated family, not a hex. Empty
+ *    means keep the template's own authored colours. This is the only way to
+ *    change hue, and every family ships light and dark versions generated from
+ *    shared lightness steps, so it stays legible against any template.
+ * 2. MOVE THE SPECTRUM. contrast / intensity / temperature / tint transform that
+ *    palette as a whole, preserving the relationships inside it.
+ *
+ * Nothing here accepts a raw colour from the user, which is the point: a
+ * template's palette can be adjusted but never overwritten piecemeal.
+ */
+function resolvePalette(look, values, ctx) {
+  const familyId = String(values.pageColor || '').trim();
+  const family = familyId ? getPageColor(familyId) : null;
+  const base = family ? family[look.mode] : ctx.colors;
+
+  return adjustPalette(base, {
+    contrast: Number(values.contrast) || 1,
+    intensity: values.intensity === 0 ? 0 : Number(values.intensity) || 1,
+    temperature: Number(values.temperature) || 0,
+    tint: Number(values.tint) || 0,
+  });
+}
+
+/**
  * What every control would be if the user had overridden nothing.
  * Exported so the UI can show "reset to preset" values and compute modified state.
  */
@@ -112,11 +140,12 @@ export function modifiedKeys(config) {
   });
 }
 
-function glassTokens(values, ctx) {
-  const { colors, preset } = ctx;
+function glassTokens(values, ctx, colors) {
+  const { preset } = ctx;
 
-  const page = String(values.pageColor || '').trim() || colors.canvas;
-  const accent = values.accent || colors.accent;
+  // Both come from the resolved palette — never from a user-supplied hex.
+  const page = colors.canvas;
+  const accent = colors.accent;
 
   const rawStrength = Number(values.panelStrength);
   const strength = Math.min(1, Math.max(0, Number.isFinite(rawStrength) ? rawStrength : 0.48));
@@ -158,7 +187,7 @@ function glassTokens(values, ctx) {
     '--container-border-opacity': '0',
 
     '--nav-border-width': navBorderWidth(values.navOutline),
-    '--nav-border-color': values.navOutlineColor || colors.line,
+    '--nav-border-color': colors.line,
 
     '--ds-color-canvas': page,
     '--ds-color-surface': colors.surface,
@@ -179,14 +208,14 @@ function glassTokens(values, ctx) {
   };
 }
 
-function foundationTokens(values, ctx) {
-  const { colors, preset } = ctx;
+function foundationTokens(values, ctx, colors) {
+  const { preset } = ctx;
 
   // Foundation previously hardcoded these and ignored the user entirely. It now
-  // honours the same overrides Glass does — while staying matte, which is what
+  // honours the same palette Glass does — while staying matte, which is what
   // actually distinguishes the surface.
-  const page = String(values.pageColor || '').trim() || colors.canvas;
-  const accent = values.accent || colors.accent;
+  const page = colors.canvas;
+  const accent = colors.accent;
 
   return {
     '--bg-url': 'none',
@@ -219,7 +248,7 @@ function foundationTokens(values, ctx) {
 
     '--nav-surface': page,
     '--nav-border-width': navBorderWidth(values.navOutline),
-    '--nav-border-color': values.navOutlineColor || colors.line,
+    '--nav-border-color': colors.line,
 
     '--ds-color-canvas': page,
     '--ds-color-surface': colors.surface,
@@ -279,7 +308,11 @@ export function legacyThemeView(resolved) {
     surfaceSystem: resolved.meta.surface,
     foundationPreset: resolved.meta.presetId,
     foundationMode: resolved.meta.mode,
-    primaryColor: resolved.values.accent,
+    primaryColor: resolved.colors.accent,
+    pageColor: resolved.colors.canvas,
+    // No longer user-settable — derived from the palette so the outline follows
+    // the page colour and spectrum. Still supplied because Header reads it.
+    navOutlineColor: resolved.colors.line,
     backgroundPattern: 'none',
   };
 }
@@ -294,12 +327,19 @@ export function resolveLook(config) {
     values[key] = value;
   }
 
+  // Family choice + spectrum, resolved once and shared by both surfaces.
+  const colors = resolvePalette(look, values, ctx);
+
   const surfaceTokens =
-    look.surface === 'foundation' ? foundationTokens(values, ctx) : glassTokens(values, ctx);
+    look.surface === 'foundation'
+      ? foundationTokens(values, ctx, colors)
+      : glassTokens(values, ctx, colors);
 
   return {
     tokens: { ...surfaceTokens, ...motionTokens(values) },
     values,
+    /** The palette actually rendered, after family swap and spectrum. */
+    colors,
     dataset: {
       surface: look.surface,
       foundationMode: look.mode,
@@ -316,6 +356,9 @@ export function resolveLook(config) {
       mode: look.mode,
       serifScope: ctx.preset.serifScope,
       layoutMode: values.layoutMode,
+      pageColorId: String(values.pageColor || '') || null,
+      /** Surfaced so the Studio can warn when a spectrum move hurts readability. */
+      contrastRatio: contrastRatio(colors.canvas, colors.ink),
     },
     modified: modifiedKeys(look),
   };

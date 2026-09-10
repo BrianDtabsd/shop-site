@@ -9,6 +9,7 @@ import {
 } from './resolveLook';
 import { CONTROLS, CONTROL_IDS } from './controls';
 import { foundationPresets, glassPresetDefaults } from './foundationPresets';
+import { pageColors } from './pageColors';
 
 const SURFACES = ['glass', 'foundation'];
 const MODES = ['light', 'dark'];
@@ -26,21 +27,61 @@ describe('layering precedence', () => {
   });
 
   it('lets an override beat both the preset and the surface default', () => {
-    const { tokens, values } = resolveLook({
+    const { values } = resolveLook({
       presetId: 'ember',
       surface: 'glass',
       mode: 'dark',
-      overrides: { accent: '#ff6b00', panelStrength: 0.9 },
+      overrides: { panelStrength: 0.9 },
     });
-    expect(tokens['--ds-color-accent']).toBe('#ff6b00');
     expect(values.panelStrength).toBe(0.9);
+  });
+
+  it('swaps the whole palette when a page-colour family is chosen', () => {
+    const stock = resolveLook({ presetId: 'ember', surface: 'glass', mode: 'dark' });
+    const teal = resolveLook({
+      presetId: 'ember',
+      surface: 'glass',
+      mode: 'dark',
+      overrides: { pageColor: 'teal' },
+    });
+    expect(teal.tokens['--ds-color-canvas']).toBe(pageColors.teal.dark.canvas);
+    expect(teal.tokens['--ds-color-canvas']).not.toBe(stock.tokens['--ds-color-canvas']);
+  });
+
+  it('refuses a raw hex as a page colour — families only', () => {
+    const { tokens } = resolveLook({
+      presetId: 'ember',
+      surface: 'glass',
+      mode: 'dark',
+      overrides: { pageColor: '#ff00ff' },
+    });
+    // Unknown family id falls back to the template's own canvas.
+    expect(tokens['--ds-color-canvas']).toBe(foundationPresets.ember.dark.canvas);
+  });
+
+  it('applies the spectrum without replacing any colour outright', () => {
+    const stock = resolveLook({ presetId: 'ember', surface: 'glass', mode: 'dark' });
+    const warmed = resolveLook({
+      presetId: 'ember',
+      surface: 'glass',
+      mode: 'dark',
+      overrides: { temperature: 0.8 },
+    });
+    expect(warmed.tokens['--ds-color-ink']).not.toBe(stock.tokens['--ds-color-ink']);
+    // Still recognisably the same accent hue, not an arbitrary new colour.
+    expect(warmed.colors.accent).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
 
 describe('override tracking', () => {
   it('reports a value that differs from the preset as modified', () => {
-    const look = { presetId: 'ember', surface: 'glass', mode: 'dark', overrides: { accent: '#ff6b00' } };
-    expect(modifiedKeys(look)).toContain('accent');
+    const look = {
+      presetId: 'ember',
+      surface: 'glass',
+      mode: 'dark',
+      overrides: { pageColor: 'ocean' },
+    };
+    expect(modifiedKeys(look)).toContain('pageColor');
   });
 
   it('does not report an override that merely equals the preset value', () => {
@@ -49,9 +90,9 @@ describe('override tracking', () => {
       presetId: 'ember',
       surface: 'glass',
       mode: 'dark',
-      overrides: { accent: base.accent },
+      overrides: { contrast: base.contrast },
     };
-    expect(modifiedKeys(look)).not.toContain('accent');
+    expect(modifiedKeys(look)).not.toContain('contrast');
   });
 
   it('does not count overrides for controls that do not apply to the surface', () => {
@@ -68,29 +109,31 @@ describe('override tracking', () => {
   });
 
   it('preserves overrides across a preset switch', () => {
-    const overrides = { accent: '#ff6b00' };
+    const overrides = { pageColor: 'ocean', contrast: 1.3 };
     const before = resolveLook({ presetId: 'ember', surface: 'glass', mode: 'dark', overrides });
     const after = resolveLook({ presetId: 'inkPaper', surface: 'glass', mode: 'dark', overrides });
 
-    expect(before.tokens['--ds-color-accent']).toBe('#ff6b00');
-    expect(after.tokens['--ds-color-accent']).toBe('#ff6b00');
-    // The rest of the look did follow the new preset.
+    // The chosen family and spectrum survive the template change...
+    expect(before.meta.pageColorId).toBe('ocean');
+    expect(after.meta.pageColorId).toBe('ocean');
+    expect(after.values.contrast).toBe(1.3);
+    // ...and the template still changed underneath them.
     expect(after.meta.presetId).toBe('inkPaper');
-    expect(after.tokens['--ds-color-surface']).toBe(foundationPresets.inkPaper.dark.surface);
+    expect(after.tokens['--font-display']).toBe(foundationPresets.inkPaper.fonts.display);
   });
 });
 
 describe('surface parity', () => {
-  it('honours accent and page color on Foundation, which previously ignored both', () => {
+  it('honours the page family on Foundation, which previously ignored it', () => {
     const { tokens } = resolveLook({
       presetId: 'ember',
       surface: 'foundation',
       mode: 'dark',
-      overrides: { accent: '#ff6b00', pageColor: '#123456' },
+      overrides: { pageColor: 'plum' },
     });
-    expect(tokens['--ds-color-accent']).toBe('#ff6b00');
-    expect(tokens['--ds-color-canvas']).toBe('#123456');
-    expect(tokens['--page-canvas']).toBe('#123456');
+    expect(tokens['--ds-color-canvas']).toBe(pageColors.plum.dark.canvas);
+    expect(tokens['--page-canvas']).toBe(pageColors.plum.dark.canvas);
+    expect(tokens['--ds-color-accent']).toBe(pageColors.plum.dark.accent);
   });
 
   it('keeps Foundation matte regardless of overrides', () => {
@@ -159,9 +202,9 @@ describe('normalizeLook hardening', () => {
   it('drops unknown override keys so imported junk cannot reach CSS', () => {
     const look = normalizeLook({
       presetId: 'ember',
-      overrides: { accent: '#fff', '--evil: red; --x': 'boom', bogus: 1 },
+      overrides: { pageColor: 'teal', '--evil: red; --x': 'boom', bogus: 1 },
     });
-    expect(Object.keys(look.overrides)).toEqual(['accent']);
+    expect(Object.keys(look.overrides)).toEqual(['pageColor']);
   });
 
   it('coerces invalid surface and mode to valid values', () => {
@@ -228,10 +271,10 @@ describe('legacy theme view', () => {
         presetId: 'inkPaper',
         surface: 'foundation',
         mode: 'light',
-        overrides: { accent: '#ff6b00' },
+        overrides: { pageColor: 'ember' },
       })
     );
-    expect(view.primaryColor).toBe('#ff6b00');
+    expect(view.primaryColor).toBe(pageColors.ember.light.accent);
     expect(view.surfaceSystem).toBe('foundation');
     expect(view.foundationPreset).toBe('inkPaper');
     expect(view.foundationMode).toBe('light');

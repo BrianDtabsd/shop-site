@@ -19,31 +19,12 @@ export const GLASS_ONLY = ['glass'];
 
 /** Display order of groups in the Look tab. */
 export const CONTROL_GROUPS = [
-  { id: 'color', label: 'Color' },
+  { id: 'palette', label: 'Page colour' },
+  { id: 'spectrum', label: 'Spectrum' },
   { id: 'surface', label: 'Surface' },
   { id: 'type', label: 'Type' },
   { id: 'shape', label: 'Shape' },
   { id: 'motion', label: 'Motion' },
-];
-
-const PAGE_SWATCHES = [
-  { label: 'Mono black', value: '#0a0a0b' },
-  { label: 'Charcoal', value: '#111111' },
-  { label: 'Ink', value: '#0e1216' },
-  { label: 'Warm dark', value: '#161513' },
-  { label: 'Paper', value: '#f3f2ee' },
-  { label: 'Cream', value: '#f5f2ea' },
-];
-
-const ACCENT_SWATCHES = [
-  { label: 'Blue', value: '#3b82f6' },
-  { label: 'Mono white', value: '#ffffff' },
-  { label: 'Ember', value: '#e27348' },
-  { label: 'Orange', value: '#ff6b00' },
-  { label: 'Mauve', value: '#b9a4c0' },
-  { label: 'Teal', value: '#5faba4' },
-  { label: 'Ink', value: '#75b9ea' },
-  { label: 'Rose', value: '#f43f5e' },
 ];
 
 /**
@@ -54,28 +35,83 @@ const ACCENT_SWATCHES = [
  * It must be pure and must not read the override layer.
  */
 export const CONTROLS = [
-  // ── Color ──────────────────────────────────────────────────────────────────
+  // ── Page colour ────────────────────────────────────────────────────────────
+  /*
+   * There is deliberately NO free colour picker here.
+   *
+   * A template's palette is a set of considered relationships. Dropping an
+   * arbitrary hex into it produced combinations no template could survive, which
+   * is why the old accent/page swatches made so little sense against the presets.
+   * Colour changes one of two sanctioned ways: pick a whole page-colour FAMILY
+   * (every family ships a light and a dark version and is generated from shared
+   * lightness steps, so it stays legible against any template), or move the
+   * spectrum controls below, which transform the palette without breaking it.
+   */
   {
     id: 'pageColor',
-    group: 'color',
-    label: 'Page color',
-    help: 'The background field behind everything.',
-    type: 'swatch',
-    options: PAGE_SWATCHES,
-    allowCustom: true,
+    group: 'palette',
+    label: 'Page colour',
+    help: 'Swaps the whole colour family. Every family has a light and a dark version.',
+    type: 'pageFamily',
     appliesTo: BOTH,
-    presetValue: ({ colors }) => colors.canvas,
+    /** Empty = keep the template's own authored colours. */
+    presetValue: () => '',
+  },
+
+  // ── Spectrum ───────────────────────────────────────────────────────────────
+  /* Transformations, not replacements. Each is neutral at its default, so an
+     untouched look renders exactly as the template author intended. */
+  {
+    id: 'contrast',
+    group: 'spectrum',
+    label: 'Contrast',
+    help: 'Pushes text and surfaces away from the page colour, or pulls them in.',
+    type: 'range',
+    min: 0.5,
+    max: 1.6,
+    step: 0.02,
+    format: (v) => `${Math.round(v * 100)}%`,
+    appliesTo: BOTH,
+    presetValue: () => 1,
   },
   {
-    id: 'accent',
-    group: 'color',
-    label: 'Accent color',
-    help: 'Buttons, links, and highlights.',
-    type: 'swatch',
-    options: ACCENT_SWATCHES,
-    allowCustom: true,
+    id: 'intensity',
+    group: 'spectrum',
+    label: 'Intensity',
+    help: 'Saturation of the whole palette. 0 is greyscale.',
+    type: 'range',
+    min: 0,
+    max: 1.8,
+    step: 0.02,
+    format: (v) => `${Math.round(v * 100)}%`,
     appliesTo: BOTH,
-    presetValue: ({ colors }) => colors.accent,
+    presetValue: () => 1,
+  },
+  {
+    id: 'temperature',
+    group: 'spectrum',
+    label: 'Temperature',
+    help: 'Cooler (blue) to warmer (yellow).',
+    type: 'range',
+    min: -1,
+    max: 1,
+    step: 0.02,
+    format: (v) => (v === 0 ? 'neutral' : v > 0 ? `+${Math.round(v * 100)} warm` : `${Math.round(-v * 100)} cool`),
+    appliesTo: BOTH,
+    presetValue: () => 0,
+  },
+  {
+    id: 'tint',
+    group: 'spectrum',
+    label: 'Tint',
+    help: 'Green to magenta, the other half of a white balance.',
+    type: 'range',
+    min: -1,
+    max: 1,
+    step: 0.02,
+    format: (v) => (v === 0 ? 'neutral' : v > 0 ? `+${Math.round(v * 100)} magenta` : `${Math.round(-v * 100)} green`),
+    appliesTo: BOTH,
+    presetValue: () => 0,
   },
 
   // ── Surface ────────────────────────────────────────────────────────────────
@@ -130,16 +166,8 @@ export const CONTROLS = [
     presetValue: ({ glassDefaults, surface }) =>
       surface === 'glass' ? glassDefaults.navOutline : 'thin',
   },
-  {
-    // Was a live theme input with no control — permanently stuck at its default.
-    id: 'navOutlineColor',
-    group: 'surface',
-    label: 'Nav outline color',
-    help: 'Defaults to the preset line color.',
-    type: 'color',
-    appliesTo: BOTH,
-    presetValue: ({ colors }) => colors.line,
-  },
+  /* No nav-outline colour picker: the outline derives from the palette's line
+     colour, so it follows the page colour and the spectrum automatically. */
 
   // ── Type ───────────────────────────────────────────────────────────────────
   {

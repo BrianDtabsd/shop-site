@@ -11,6 +11,7 @@
  */
 
 import { foundationPresets } from './foundationPresets';
+import { nearestPageColor } from './pageColors';
 import { CONTROLS } from './controls';
 import { DEFAULT_LOOK, normalizeLook, presetValues } from './resolveLook';
 
@@ -25,10 +26,32 @@ export const DEAD_FIELDS = [
 /**
  * Old field name → control id, where they differ.
  * Unlisted control ids kept their name across the migration.
+ *
+ * `primaryColor` and the old hex `pageColor` have no direct successor — raw
+ * colours are no longer settable at all. They are handled separately by
+ * `recoverPageFamily` below rather than mapped one-to-one.
  */
-const RENAMED = {
-  primaryColor: 'accent',
-};
+const RENAMED = {};
+
+/**
+ * Recover a page-colour family from the v4 hexes.
+ *
+ * v4 let you set any accent and any page colour as raw hex. Neither is
+ * expressible now, but discarding them would silently reset a look someone
+ * deliberately tuned. The accent carries the hue that actually identified their
+ * choice, so it is matched first; the page colour is the fallback.
+ */
+function recoverPageFamily(stored) {
+  const accent = typeof stored.primaryColor === 'string' ? stored.primaryColor.trim() : '';
+  const page = typeof stored.pageColor === 'string' ? stored.pageColor.trim() : '';
+
+  for (const candidate of [accent, page]) {
+    if (!candidate) continue;
+    const family = nearestPageColor(candidate);
+    if (family) return family;
+  }
+  return null;
+}
 
 /**
  * @param {object|null} stored - parsed contents of a shopsite-theme-v* key
@@ -68,12 +91,18 @@ export function migrateThemeToLook(stored) {
 
     const value = recovered[storedKey];
     if (value === undefined || value === null) continue;
-    // Empty strings in the old model meant "unset", not "set to empty".
-    if (typeof value === 'string' && value.trim() === '' && base[control.id]) continue;
+    // Empty or whitespace-only strings meant "unset" in the old model.
+    if (typeof value === 'string' && value.trim() === '') continue;
     if (value === base[control.id]) continue;
 
     overrides[control.id] = value;
   }
+
+  // 4b. Raw colours are gone; recover the nearest curated family instead so a
+  //     tuned look is not silently reset to the template default.
+  const family = recoverPageFamily(recovered);
+  if (family) overrides.pageColor = family;
+  else delete overrides.pageColor;
 
   // 5. Dead fields are simply never copied across — step 2 already took what
   //    they still carried.

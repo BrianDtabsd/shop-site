@@ -680,10 +680,24 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
   position: absolute;
   bottom: 0;
   border-radius: var(--card-radius, 1.25rem);
-  /* Parallax rides `translate` so the entrance animation keeps `transform`.
-     The two properties compose instead of overwriting each other. */
-  translate: 0 calc(var(--parallax-y, 0px) * var(--depth, 1));
+  /*
+   * Two independent motions on one property.
+   *
+   * X — direction-aware separation. --scroll-spread runs 0→1 as you scroll down
+   * and unwinds as you scroll back up, so the layers fan apart to OPPOSITE sides
+   * and draw together again when you reverse. --spread-x is in cqw so the fan
+   * scales with the column and the front slab never escapes the gutter.
+   *
+   * Y — positional parallax, scaled per layer by --depth.
+   *
+   * Both ride `translate`, leaving `transform` to the entrance animation. Put
+   * them on `transform` and the animation's `to { transform: none }` silently
+   * erases them, which is exactly what killed the old glass orb's parallax.
+   */
+  translate: calc(var(--spread-x, 0cqw) * var(--scroll-spread, 0))
+    calc(var(--parallax-y, 0px) * var(--depth, 1));
   animation: hero-slab-in 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: translate 0.18s linear;
   will-change: transform, translate;
 }
 
@@ -695,6 +709,8 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
   height: 74%;
   margin-bottom: -14%;
   --depth: 0.35;
+  /* Travels left, away from the stack. */
+  --spread-x: -5.5cqw;
   background: color-mix(in srgb, var(--ds-color-surface-subtle) 88%, transparent);
   border: 1px solid color-mix(in srgb, var(--ds-color-line) 70%, transparent);
   animation-delay: 0.02s;
@@ -706,6 +722,7 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
   height: 55%;
   margin-bottom: -7%;
   --depth: 0.8;
+  --spread-x: -1.2cqw;
   background: color-mix(in srgb, var(--ds-color-accent-soft) 92%, transparent);
   animation-delay: 0.12s;
 }
@@ -716,6 +733,9 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
   height: 35%;
   margin-bottom: -1%;
   --depth: 1.35;
+  /* Travels right, the opposite way to the back slab. Capped well inside the
+     15% gutter it sits in, so separating never breaks the column alignment. */
+  --spread-x: 4cqw;
   background: var(--ds-color-accent);
   animation-delay: 0.22s;
 }
@@ -877,6 +897,7 @@ html[data-surface='foundation'][data-foundation-preset='consciousness'] .foundat
   .hero-visual--slabs .hero-slab,
   .hero-visual--slabs .hero-slab__rule {
     translate: none;
+    transition: none;
   }
 }
 
