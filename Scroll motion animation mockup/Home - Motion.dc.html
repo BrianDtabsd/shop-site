@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    a { color: #ff8a3d; }
+    a:hover { color: #ffab6b; }
+    @keyframes hm-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+    @keyframes hm-pulse { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
+  </style>
+</helmet>
+
+<div style="background:#0a0a0b;color:#d4d4d8;font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;overflow-x:clip;position:relative;">
+
+  <div style="position:fixed;top:76px;left:50%;transform:translateX(-50%);z-index:55;display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:rgba(22,22,24,0.85);border:1px solid rgba(255,255,255,0.14);backdrop-filter:blur(12px);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#ff8a3d;">
+    <span style="width:6px;height:6px;border-radius:50%;background:#ff6b00;animation:hm-pulse 2s infinite;"></span>
+    Home — Motion (alt template)
+  </div>
+
+  <div style="position:fixed;right:22px;top:50%;transform:translateY(-50%);z-index:90;display:flex;flex-direction:column;align-items:center;gap:12px;">
+    <div style="width:2px;height:120px;border-radius:2px;background:rgba(255,255,255,0.14);position:relative;overflow:hidden;">
+      <div ref="{{ progressFillRef }}" style="position:absolute;bottom:0;left:0;width:100%;height:0%;background:#ff6b00;border-radius:2px;"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <span ref="{{ dot0Ref }}" style="width:7px;height:7px;border-radius:50%;background:#ff6b00;transition:transform .25s ease, opacity .25s ease;"></span>
+      <span ref="{{ dot1Ref }}" style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.3);transition:transform .25s ease, opacity .25s ease;"></span>
+      <span ref="{{ dot2Ref }}" style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.3);transition:transform .25s ease, opacity .25s ease;"></span>
+      <span ref="{{ dot3Ref }}" style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.3);transition:transform .25s ease, opacity .25s ease;"></span>
+    </div>
+  </div>
+
+  <header style="position:sticky;top:0;z-index:60;padding:12px 24px 0;pointer-events:none;">
+    <div style="max-width:1360px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-radius:16px;background:rgba(22,22,24,0.92);border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(18px) saturate(1.2);box-shadow:0 10px 32px rgba(0,0,0,0.45);pointer-events:auto;">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#ff6b00,#7a3300);flex-shrink:0;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6 8h12l1 12H5L6 8Z" stroke="#fff" stroke-width="1.6"/><path d="M9 8a3 3 0 0 1 6 0" stroke="#fff" stroke-width="1.6"/></svg>
+        </div>
+        <span style="font-weight:600;font-size:1.05rem;letter-spacing:-0.01em;color:#fff;">Your Brand</span>
+      </div>
+      <nav style="display:flex;align-items:center;gap:2px;">
+        <span style="padding:8px 12px;font-size:0.875rem;font-weight:500;color:#d4d4d8;">How it works</span>
+        <span style="padding:8px 12px;font-size:0.875rem;font-weight:500;color:#d4d4d8;">Pricing</span>
+        <span style="padding:8px 12px;font-size:0.875rem;font-weight:500;color:#d4d4d8;">Shop</span>
+      </nav>
+      <span style="padding:9px 18px;border-radius:12px;background:#ff6b00;color:#fff;font-size:0.875rem;font-weight:600;">Subscribe</span>
+    </div>
+  </header>
+
+  <div ref="{{ trackRef }}" style="position:relative;height:520vh;">
+    <div style="position:sticky;top:0;height:100vh;overflow:hidden;">
+
+      <div ref="{{ dayRef }}" style="position:absolute;inset:0;background:linear-gradient(180deg,#2e7f86 0%,#79b6ac 42%,#d7d3ab 72%,#f0d9a8 100%);"></div>
+
+      <!-- dusk/indigo sky: rises as the bands darken -->
+      <div ref="{{ skyPeakRef }}" style="position:absolute;inset:0;opacity:0;background:linear-gradient(180deg,#141726 0%,#1e2033 45%,#2c2434 100%);"></div>
+
+      <div ref="{{ nightRef }}" style="position:absolute;inset:0;opacity:0;background:
+          radial-gradient(2px 2px at 12% 18%, rgba(255,255,255,0.9), transparent),
+          radial-gradient(2px 2px at 28% 10%, rgba(255,255,255,0.7), transparent),
+          radial-gradient(1.5px 1.5px at 44% 22%, rgba(255,255,255,0.8), transparent),
+          radial-gradient(2px 2px at 65% 14%, rgba(255,255,255,0.6), transparent),
+          radial-gradient(1.5px 1.5px at 80% 8%, rgba(255,255,255,0.75), transparent),
+          radial-gradient(1.5px 1.5px at 92% 20%, rgba(255,255,255,0.6), transparent),
+          linear-gradient(180deg,#0b0b0e 0%,#131319 55%,#1b1b21 100%);"></div>
+
+      <!-- far layer: satellite drifting in the upper sky -->
+      <div ref="{{ farRef }}" style="position:absolute;left:0;right:0;top:0;height:72%;">
+        <svg viewBox="0 0 1440 500" preserveAspectRatio="xMidYMin slice" style="width:100%;height:100%;display:block;overflow:visible;">
+          <g ref="{{ satelliteRef }}" style="transform-origin:1080px 120px;" transform="translate(1080,120) rotate(-18)">
+            <rect x="-10" y="-38" width="20" height="76" rx="4" fill="#e8d9b8" opacity="0.9"/>
+            <rect x="-52" y="-14" width="34" height="28" rx="2" fill="#ff8a3d" opacity="0.85"/>
+            <rect x="18" y="-14" width="34" height="28" rx="2" fill="#ff8a3d" opacity="0.85"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- mid layer: poster arcs — banded rainbow rising from the horizon, planets shrinking upward -->
+      <div ref="{{ midRef }}" style="position:absolute;inset:0;overflow:hidden;">
+        <svg viewBox="0 0 1000 560" preserveAspectRatio="xMidYMax slice" style="position:absolute;inset:0;width:100%;height:100%;display:block;">
+          <g ref="{{ arcsRef }}">
+            <ellipse cx="740" cy="560" rx="1100" ry="893" fill="#2e7f86" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="1013" ry="822" fill="#4aa79b" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="925" ry="751" fill="#63b8ab" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="837" ry="680" fill="#8fcbb4" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="750" ry="609" fill="#a9d6bd" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="662" ry="537" fill="#cfe0c2" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="574" ry="466" fill="#efe7c8" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="487" ry="395" fill="#f3d9a8" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="399" ry="324" fill="#eeae62" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="311" ry="253" fill="#eb9a4f" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="224" ry="182" fill="#e2793c" opacity="0"></ellipse>
+            <ellipse cx="740" cy="560" rx="136" ry="110" fill="#cf3a2e" opacity="0"></ellipse>
+          </g>
+        </svg>
+      </div>
+
+      <!-- street layer: far mountain ridge -->
+      <div ref="{{ streetRef }}" style="position:absolute;left:0;right:0;bottom:0;height:36%;">
+        <svg viewBox="0 0 1440 320" preserveAspectRatio="none" style="width:100%;height:100%;display:block;">
+          <polygon points="0,320 0,180 180,90 360,160 560,60 760,140 980,70 1200,150 1440,90 1440,320" fill="#24242b" opacity="0.95"/>
+          <polygon points="0,320 0,230 220,150 460,210 700,130 940,200 1180,140 1440,190 1440,320" fill="#17171c"/>
+        </svg>
+      </div>
+
+      <!-- foreground layer: near mountain ridge -->
+      <div ref="{{ peopleRef }}" style="position:absolute;left:0;right:0;bottom:0;height:30%;">
+        <svg viewBox="0 0 1440 260" preserveAspectRatio="none" style="width:100%;height:100%;display:block;">
+          <polygon points="0,260 0,140 240,50 500,120 780,30 1040,110 1300,40 1440,100 1440,260" fill="#0b0b0e"/>
+        </svg>
+      </div>
+
+      <!-- night overlay: stars + aurora glow -->
+      <div ref="{{ lightsRef }}" style="position:absolute;inset:0;opacity:0;mix-blend-mode:screen;background:
+          radial-gradient(1.5px 1.5px at 15% 25%, #fff, transparent),
+          radial-gradient(1.5px 1.5px at 35% 15%, #fff, transparent),
+          radial-gradient(1px 1px at 55% 30%, #fff, transparent),
+          radial-gradient(1.5px 1.5px at 72% 12%, #fff, transparent),
+          radial-gradient(1px 1px at 88% 22%, #fff, transparent),
+          radial-gradient(60% 40% at 50% 0%, rgba(255,138,61,0.35), transparent 70%);"></div>
+
+      <div style="position:absolute;inset:0;background:linear-gradient(90deg, rgba(8,8,10,0.72) 0%, rgba(8,8,10,0.62) 30%, rgba(8,8,10,0.42) 55%, rgba(8,8,10,0.34) 100%);pointer-events:none;"></div>
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.14) 40%, rgba(0,0,0,0.3) 78%, rgba(0,0,0,0.5) 100%);pointer-events:none;"></div>
+
+      <!-- moon painted above the scrims so it keeps its value -->
+      <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+        <div ref="{{ moonRef }}" style="position:absolute;left:14%;top:20%;width:18vmin;height:18vmin;max-width:200px;max-height:200px;border-radius:50%;background:radial-gradient(circle at 38% 32%, #f4f0e8 0%, #cfc9bd 40%, #9a9488 75%, #6f6a60 100%);box-shadow:0 0 60px rgba(255,255,255,0.15);opacity:0;"></div>
+      </div>
+
+      <div ref="{{ scene1Ref }}" style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 24px;opacity:1;">
+        <div style="max-width:1360px;margin:0 auto;width:100%;">
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.25);backdrop-filter:blur(10px);margin-bottom:24px;">
+            <span style="width:6px;height:6px;border-radius:50%;background:#ff6b00;"></span>
+            <span style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:#fff;">Orbiting your everyday</span>
+          </div>
+          <h1 style="font-size:clamp(2.6rem,6vw,5.2rem);line-height:0.98;letter-spacing:-0.04em;font-weight:300;color:#fff;max-width:14ch;margin:0 0 28px;text-shadow:0 2px 24px rgba(0,0,0,0.4);">
+            Hours, not days.<br/>Days, not weeks.
+          </h1>
+          <p style="max-width:38rem;font-size:1.15rem;line-height:1.7;color:rgba(255,255,255,0.82);margin:0 0 40px;">
+            Layer your story like a night sky — each scroll clears a horizon, from distant satellite to a glowing checkout.
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:16px;">
+            <span style="padding:14px 26px;border-radius:12px;background:#ff6b00;color:#fff;font-weight:600;font-size:0.95rem;">Explore the concept</span>
+            <span style="padding:14px 26px;border-radius:12px;border:1px solid rgba(255,255,255,0.35);color:#fff;font-weight:600;font-size:0.95rem;">See the classic template</span>
+          </div>
+        </div>
+      </div>
+
+      <div ref="{{ scene2Ref }}" style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 24px;opacity:0;pointer-events:none;">
+        <div style="max-width:1360px;margin:0 auto;width:100%;">
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.25);backdrop-filter:blur(10px);margin-bottom:20px;">
+            <span style="width:6px;height:6px;border-radius:50%;background:#ff6b00;"></span>
+            <span style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:#fff;">Why customers choose you</span>
+          </div>
+          <h2 style="font-size:clamp(2rem,4vw,3.2rem);font-weight:300;color:#fff;letter-spacing:-0.03em;margin:0 0 40px;max-width:16ch;">Every layer earns its place</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;">
+            <div style="background:rgba(16,16,19,0.88);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.14);border-radius:20px;padding:24px;">
+              <div style="font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;color:#ff9a5c;margin-bottom:10px;">Benefit 01</div>
+              <div style="font-size:1.1rem;color:#fff;font-weight:500;margin-bottom:8px;">One scroll, one reveal</div>
+              <p style="font-size:0.9rem;color:rgba(255,255,255,0.88);line-height:1.6;margin:0;">Each section drops away like a ridge falling below the horizon.</p>
+            </div>
+            <div style="background:rgba(16,16,19,0.88);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.14);border-radius:20px;padding:24px;">
+              <div style="font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;color:#ff9a5c;margin-bottom:10px;">Benefit 02</div>
+              <div style="font-size:1.1rem;color:#fff;font-weight:500;margin-bottom:8px;">Depth without clutter</div>
+              <p style="font-size:0.9rem;color:rgba(255,255,255,0.88);line-height:1.6;margin:0;">Parallax layers keep focus on one message at a time.</p>
+            </div>
+            <div style="background:rgba(16,16,19,0.88);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.14);border-radius:20px;padding:24px;">
+              <div style="font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;color:#ff9a5c;margin-bottom:10px;">Benefit 03</div>
+              <div style="font-size:1.1rem;color:#fff;font-weight:500;margin-bottom:8px;">Day fades, brand stays lit</div>
+              <p style="font-size:0.9rem;color:rgba(255,255,255,0.88);line-height:1.6;margin:0;">The accent color carries through morning, dusk, and night.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div ref="{{ scene3Ref }}" style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 24px;opacity:0;pointer-events:none;">
+        <div style="max-width:1360px;margin:0 auto;width:100%;">
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.25);backdrop-filter:blur(10px);margin-bottom:20px;">
+            <span style="width:6px;height:6px;border-radius:50%;background:#ff6b00;"></span>
+            <span style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:#fff;">Features</span>
+          </div>
+          <h2 style="font-size:clamp(2rem,4vw,3.2rem);font-weight:300;color:#fff;letter-spacing:-0.03em;margin:0 0 32px;max-width:18ch;">Everything in your offer, in plain view</h2>
+          <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:14px;max-width:34rem;">
+            <li style="display:flex;gap:14px;align-items:flex-start;color:#fff;">
+              <span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:rgba(255,107,0,0.18);border:1px solid rgba(255,107,0,0.5);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11px;color:#ff9a5c;">1</span>
+              <span style="font-size:1rem;line-height:1.7;">Traffic-tested checkout flows, tuned for peak hours</span>
+            </li>
+            <li style="display:flex;gap:14px;align-items:flex-start;color:#fff;">
+              <span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:rgba(255,107,0,0.18);border:1px solid rgba(255,107,0,0.5);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11px;color:#ff9a5c;">2</span>
+              <span style="font-size:1rem;line-height:1.7;">Storefront themes that read at a glance, day or night</span>
+            </li>
+            <li style="display:flex;gap:14px;align-items:flex-start;color:#fff;">
+              <span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:rgba(255,107,0,0.18);border:1px solid rgba(255,107,0,0.5);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11px;color:#ff9a5c;">3</span>
+              <span style="font-size:1rem;line-height:1.7;">Live inventory that keeps pace with foot traffic</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div ref="{{ scene4Ref }}" style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 24px;opacity:0;pointer-events:none;">
+        <div style="max-width:1360px;margin:0 auto;width:100%;text-align:center;">
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,107,0,0.12);backdrop-filter:blur(10px);margin-bottom:24px;">
+            <span style="width:6px;height:6px;border-radius:50%;background:#ff8a3d;"></span>
+            <span style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:#ffb787;">Get started</span>
+          </div>
+          <h2 style="font-size:clamp(2.2rem,5vw,4rem);font-weight:300;color:#fff;letter-spacing:-0.035em;margin:0 auto 20px;max-width:16ch;text-shadow:0 0 30px rgba(255,107,0,0.25);">Ready when the lights come up</h2>
+          <p style="max-width:34rem;margin:0 auto 36px;font-size:1.05rem;color:rgba(255,255,255,0.75);line-height:1.7;">Point this CTA at pricing or checkout — the storefront stays lit long after the street goes quiet.</p>
+          <span style="display:inline-block;padding:16px 34px;border-radius:12px;background:#ff6b00;color:#fff;font-weight:600;font-size:1rem;box-shadow:0 0 40px rgba(255,107,0,0.35);">See plans</span>
+        </div>
+      </div>
+
+      <div ref="{{ scrollHintRef }}" style="position:absolute;left:50%;bottom:32px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;color:rgba(255,255,255,0.75);animation:hm-bounce 2s infinite;">
+        <span style="font-family:monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;">Scroll</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+    </div>
+  </div>
+
+  <footer style="padding:80px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);">
+    <p style="font-size:0.85rem;color:#71717a;max-width:36rem;margin:0 auto;line-height:1.7;">
+      No photography needed — a banded sun, a satellite, and layered mountain ridges. The colour arcs bloom outward one at a time, darken in the same order, and the moon rises as night lands.
+    </p>
+  </footer>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  trackRef = (el) => { this.trackEl = el; };
+  dayRef = (el) => { this.dayEl = el; };
+  skyPeakRef = (el) => { this.skyPeakEl = el; };
+  nightRef = (el) => { this.nightEl = el; };
+  farRef = (el) => { this.farEl = el; };
+  moonRef = (el) => { this.moonEl = el; };
+  satelliteRef = (el) => { this.satelliteEl = el; };
+  midRef = (el) => { this.midEl = el; };
+  arcsRef = (el) => { this.arcsEl = el; };
+  streetRef = (el) => { this.streetEl = el; };
+  peopleRef = (el) => { this.peopleEl = el; };
+  lightsRef = (el) => { this.lightsEl = el; };
+  scene1Ref = (el) => { this.scene1El = el; };
+  scene2Ref = (el) => { this.scene2El = el; };
+  scene3Ref = (el) => { this.scene3El = el; };
+  scene4Ref = (el) => { this.scene4El = el; };
+  scrollHintRef = (el) => { this.scrollHintEl = el; };
+  dot0Ref = (el) => { this.dot0El = el; };
+  dot1Ref = (el) => { this.dot1El = el; };
+  dot2Ref = (el) => { this.dot2El = el; };
+  dot3Ref = (el) => { this.dot3El = el; };
+  progressFillRef = (el) => { this.fillEl = el; };
+
+  clampNorm(p, a, b) {
+    const t = (p - a) / (b - a);
+    return Math.min(1, Math.max(0, t));
+  }
+
+  smoothstep(a, b, x) {
+    const t = this.clampNorm(x, a, b);
+    return t * t * (3 - 2 * t);
+  }
+
+  setStyle(el, styles) {
+    if (!el) return;
+    Object.assign(el.style, styles);
+  }
+
+  applyScene(el, vis) {
+    this.setStyle(el, {
+      opacity: String(vis),
+      transform: `translateY(${(1 - vis) * 30}px)`,
+      pointerEvents: vis > 0.4 ? 'auto' : 'none',
+    });
+  }
+
+  setActiveDot(index) {
+    const dots = [this.dot0El, this.dot1El, this.dot2El, this.dot3El];
+    dots.forEach((d, i) => {
+      this.setStyle(d, {
+        background: i === index ? '#ff6b00' : 'rgba(255,255,255,0.3)',
+        transform: i === index ? 'scale(1.4)' : 'scale(1)',
+      });
+    });
+  }
+
+  computeAndApply() {
+    if (!this.trackEl) return;
+    const vh = window.innerHeight;
+    const rect = this.trackEl.getBoundingClientRect();
+    const scrolled = -rect.top;
+    const maxScroll = this.trackEl.offsetHeight - vh;
+    const p = maxScroll > 0 ? this.clampNorm(scrolled, 0, maxScroll) : 0;
+
+    // page opens in full daylight; dusk then night roll in as the bands darken
+    const duskAmt = this.smoothstep(0.3, 0.72, p);
+    const dayAmt = 1 - duskAmt;
+    const nightAmt = this.smoothstep(0.6, 0.95, p);
+    this.setStyle(this.skyPeakEl, { opacity: String(duskAmt) });
+    this.setStyle(this.nightEl, { opacity: String(nightAmt) });
+
+    // sky layer drifts gently with the scene — no detaching, no gaps
+    this.setStyle(this.farEl, { transform: `translateY(${-24 * p}px)` });
+
+    // moon holds its spot all the way through — washed out at peak sun, full and bright at night
+    this.setStyle(this.moonEl, {
+      opacity: String(Math.max(0.1 * dayAmt, nightAmt)),
+      transform: `translateY(0px)`,
+      filter: `saturate(${0.3 + nightAmt * 0.7}) brightness(${0.75 + nightAmt * 0.35})`
+    });
+
+    // satellite drifts slowly across the sky with a gentle tumble
+    if (this.satelliteEl) {
+      this.satelliteEl.setAttribute('transform', `translate(${1080 - p * 140},${120 + p * 40}) rotate(${-18 + p * 70})`);
+      this.satelliteEl.style.transformOrigin = '0 0';
+    }
+
+    // poster arcs: fully lit in the opening daylight frame, easing outward, then darkening in order
+    this.setStyle(this.midEl, { opacity: '1' });
+    if (this.arcsEl) {
+      const grow = this.smoothstep(0, 0.25, p);
+      this.setStyle(this.arcsEl, { transform: `scale(${0.96 + grow * 0.04})`, transformOrigin: '740px 560px' });
+      const arcs = this.arcsEl.children;
+      const n = arcs.length;
+      for (let i = 0; i < n; i++) {
+        const order = n - 1 - i; // children are outermost-first; inner band darkens first
+        const start = 0.1 + order * 0.045;
+        const darkT = this.smoothstep(start, start + 0.3, p);
+        arcs[i].setAttribute('opacity', '1');
+        this.setStyle(arcs[i], { filter: `brightness(${1 - darkT * 0.82}) saturate(${1 - darkT * 0.5})` });
+      }
+    }
+
+    // ridges stay anchored to the horizon and only parallax gently — they never slide off
+    this.setStyle(this.streetEl, { transform: `translateY(${p * 22}px)`, opacity: '1' });
+    this.setStyle(this.peopleEl, { transform: `translateY(${p * 42}px)`, opacity: '1' });
+
+    // night lights fade in over the emptied frame
+    const t4 = this.smoothstep(0.68, 0.92, p);
+    this.setStyle(this.lightsEl, { opacity: String(t4) });
+
+    // content scenes
+    // scene1 is visible at rest (p=0) — only fades out, never fades in
+    const s1 = this.clampNorm(p, 0, 0.2);
+    const s1vis = p > 0.2 ? 0 : 1 - this.smoothstep(0.85, 1, s1);
+    this.applyScene(this.scene1El, s1vis);
+
+    const s2 = this.clampNorm(p, 0.2, 0.45);
+    const s2vis = (p < 0.2 || p > 0.45) ? 0 : Math.min(this.smoothstep(0, 0.15, s2), 1 - this.smoothstep(0.85, 1, s2));
+    this.applyScene(this.scene2El, s2vis);
+
+    const s3 = this.clampNorm(p, 0.45, 0.7);
+    const s3vis = (p < 0.45 || p > 0.7) ? 0 : Math.min(this.smoothstep(0, 0.15, s3), 1 - this.smoothstep(0.85, 1, s3));
+    this.applyScene(this.scene3El, s3vis);
+
+    const s4 = this.clampNorm(p, 0.7, 1);
+    const s4vis = p < 0.7 ? 0 : this.smoothstep(0, 0.2, s4);
+    this.applyScene(this.scene4El, s4vis);
+
+    this.setStyle(this.scrollHintEl, { opacity: String(1 - this.smoothstep(0, 0.08, p)) });
+
+    const idx = p < 0.2 ? 0 : p < 0.45 ? 1 : p < 0.7 ? 2 : 3;
+    this.setActiveDot(idx);
+    this.setStyle(this.fillEl, { height: `${p * 100}%` });
+  }
+
+  componentDidMount() {
+    this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.raf = null;
+    this.onScroll = () => {
+      if (this.raf) return;
+      this.raf = requestAnimationFrame(() => {
+        this.raf = null;
+        this.computeAndApply();
+      });
+    };
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+    window.addEventListener('resize', this.onScroll);
+    this.onScroll();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('scroll', this.onScroll);
+    window.removeEventListener('resize', this.onScroll);
+    if (this.raf) cancelAnimationFrame(this.raf);
+  }
+
+  renderVals() {
+    return {
+      trackRef: this.trackRef,
+      dayRef: this.dayRef,
+      skyPeakRef: this.skyPeakRef,
+      nightRef: this.nightRef,
+      farRef: this.farRef,
+      moonRef: this.moonRef,
+      satelliteRef: this.satelliteRef,
+      midRef: this.midRef,
+      arcsRef: this.arcsRef,
+      streetRef: this.streetRef,
+      peopleRef: this.peopleRef,
+      lightsRef: this.lightsRef,
+      scene1Ref: this.scene1Ref,
+      scene2Ref: this.scene2Ref,
+      scene3Ref: this.scene3Ref,
+      scene4Ref: this.scene4Ref,
+      scrollHintRef: this.scrollHintRef,
+      dot0Ref: this.dot0Ref,
+      dot1Ref: this.dot1Ref,
+      dot2Ref: this.dot2Ref,
+      dot3Ref: this.dot3Ref,
+      progressFillRef: this.progressFillRef,
+    };
+  }
+}
+
+</script>
+</body>
+</html>
